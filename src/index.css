@@ -16,6 +16,14 @@
   --color-secondary-container: #a0f399;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
+
+  /* Print Safe Colors (Solid Hex to avoid oklab/oklch opacity issues in html2canvas) */
+  --color-primary-light: #f7e7e8;
+  --color-secondary-light: #e8f0e9;
+  --color-tertiary-light: #f3ece5;
+  --color-primary-border: #efcfd1;
+  --color-secondary-border: #d1e2d3;
+  --color-tertiary-border: #e8d9cc;
 }
 
 @layer base {
@@ -25,12 +33,14 @@
 
   @media print {
     @page {
-      size: A4 landscape;
+      size: A4 portrait;
       margin: 1cm;
     }
     
     body {
       background: white !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     .no-print {
@@ -47,11 +57,47 @@
       margin: 0 !important;
       box-shadow: none !important;
       border: none !important;
+      overflow: visible !important;
+      display: block !important;
     }
 
     .print-map-content {
       min-width: unset !important;
-      zoom: 0.8; /* Adjust zoom for A4 fit */
+      width: 100% !important;
+      display: block !important;
+      position: relative !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      transform: scale(0.85);
+      transform-origin: top left;
+    }
+
+    /* Ensure all parents are visible and not clipping */
+    #root, main, .flex-1, .motion-container {
+      display: block !important;
+      height: auto !important;
+      overflow: visible !important;
+      width: 100% !important;
+      max-width: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* Fix for Framer Motion opacity issues in print */
+    div[style*="opacity"] {
+      opacity: 1 !important;
+    }
+
+    /* Force borders and backgrounds to show in print */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    /* Ensure white boxes in map are visible in print */
+    .bg-white {
+      background-color: white !important;
+      border-color: #e5e7eb !important;
     }
   }
 

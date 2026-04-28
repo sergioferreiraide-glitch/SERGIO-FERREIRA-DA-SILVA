@@ -1,5 +1,5 @@
 {
-  "name": "Remix: Guardião CEASA",
+  "name": "Guardião CEASA",
   "description": "Sistema de inspeção e monitoramento de extintores de incêndio para ambientes industriais.",
   "requestFramePermissions": [
     "camera"
