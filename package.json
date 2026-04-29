@@ -53,8 +53,7 @@
       "electron-main.cjs"
     ],
     "win": {
-      "target": "portable",
-      "icon": "public/favicon.ico"
+      "target": "portable"
     }
   }
 }

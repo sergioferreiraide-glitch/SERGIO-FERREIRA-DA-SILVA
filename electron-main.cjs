@@ -6,21 +6,26 @@ function createWindow() {
     width: 1280,
     height: 800,
     title: "Sentinel Ceasa - Guardião",
-    icon: path.join(__dirname, 'public/favicon.ico'), // Opcional: ícone do app
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
     }
   });
 
-  // Em produção, carrega o index.html da pasta dist
-  // Em desenvolvimento, você pode apontar para o localhost:3000
+  // Tenta carregar o ícone se existir
+  const iconPath = path.join(__dirname, 'dist/icon.svg');
+  if (require('fs').existsSync(iconPath)) {
+    win.setIcon(iconPath);
+  }
+
   const isDev = process.env.NODE_ENV === 'development';
   
   if (isDev) {
     win.loadURL('http://localhost:3000');
   } else {
-    win.loadFile(path.join(__dirname, 'dist/index.html'));
+    // Em produção, o arquivo está em dist/index.html relativo ao executável
+    const indexPath = path.join(__dirname, 'dist', 'index.html');
+    win.loadFile(indexPath);
   }
 
   // Remove o menu superior padrão para parecer um app nativo

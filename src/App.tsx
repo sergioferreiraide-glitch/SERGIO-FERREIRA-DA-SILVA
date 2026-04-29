@@ -455,7 +455,7 @@ export default function App() {
       date: inspectionDate || new Date().toLocaleDateString('pt-BR'),
       time: inspectionTime || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       month: inspectionMonth,
-      inspector: user?.displayName || responsibles[0]?.name || 'Sistema',
+      inspector: user?.user_metadata?.full_name || user?.email || responsibles[0]?.name || 'Sistema',
       checklist,
       notes,
       photos
@@ -727,8 +727,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Configuration Warning Bar - Only if connection is broken */}
-      {!isConfigured && (user || isGuest) && (
+      {/* Configuration Warning Bar - Only if configuration is missing AND NOT a guest */}
+      {!isConfigured && user && !isGuest && (
         <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between shadow-lg z-[100]">
           <div className="flex items-center gap-3">
             <AlertCircle size={18} className="animate-pulse" />
@@ -1760,14 +1760,14 @@ function InspectView({ extinguisher, onCancel, onSave, onShowQR }: {
   onShowQR: (ext: Extinguisher) => void 
 }) {
   const [checklist, setChecklist] = useState<Record<string, boolean | 'N/A'>>({
-    manometer: extinguisher.type.includes('CO2') ? 'N/A' : true,
+    manometer: extinguisher?.type?.includes('CO2') ? 'N/A' : true,
     seal: true,
     damage: true,
     access: true,
     signage: true,
     inmetro: true,
     instructions: true,
-    diffuser: extinguisher.type.includes('CO2') ? true : 'N/A',
+    diffuser: extinguisher?.type?.includes('CO2') ? true : 'N/A',
     hose: true
   });
   const [notes, setNotes] = useState('');
@@ -3789,7 +3789,7 @@ function LoginScreen({
             className="w-full py-5 bg-amber-50 text-amber-700 border-2 border-amber-200 rounded-3xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 hover:bg-amber-100 transition-all shadow-sm text-xs"
           >
             <ShieldCheck size={24} />
-            Entrar como Convidado
+            Entrar como Convidado (Modo de Teste)
           </button>
 
           <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 space-y-4">
