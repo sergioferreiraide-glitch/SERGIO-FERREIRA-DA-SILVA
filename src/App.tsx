@@ -30,6 +30,7 @@ import {
   Users,
   UserCog,
   Download,
+  Upload,
   Filter,
   ShieldCheck,
   AlertCircle,
@@ -204,6 +205,7 @@ export default function App() {
   const [showSqlSetupModal, setShowSqlSetupModal] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [isUpdating, setIsUpdating] = useState(false);
   const [extinguishers, setExtinguishers] = useState<Extinguisher[]>(() => {
     try {
       const saved = localStorage.getItem('fire_extinguishers_cache');
@@ -272,8 +274,8 @@ export default function App() {
     }
   });
 
-  // Sincronizar Agora (Função Manual)
-  const handleSyncWithCloud = async () => {
+  // Sincronizar Agora (Busca da Nuvem)
+  const handleSyncFromCloud = async () => {
     if (!supabase) {
       setNotification({ message: "Supabase não configurado!", type: 'error' });
       return;
@@ -300,9 +302,47 @@ export default function App() {
       
       setExtinguishers(mapped);
       localStorage.setItem('fire_extinguishers_cache', JSON.stringify(mapped));
-      setNotification({ message: `Sincronizado! ${mapped.length} extintores encontrados.`, type: 'success' });
+      setNotification({ message: `📦 Nuvem -> Local: ${mapped.length} extintores carregados.`, type: 'success' });
     } catch (err: any) {
-      setNotification({ message: "Erro ao sincronizar: " + err.message, type: 'error' });
+      setNotification({ message: "Erro ao baixar: " + err.message, type: 'error' });
+    } finally {
+      setIsUpdating(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  // Forçar Envio Local para Nuvem (Útil se uma tela tiver mais dados que a outra)
+  const handleUploadLocalToCloud = async () => {
+    if (!supabase) {
+      setNotification({ message: "Supabase não configurado!", type: 'error' });
+      return;
+    }
+
+    const confirm = window.confirm(`Isso enviará seus ${extinguishers.length} extintores locais para o banco de dados. Deseja continuar?`);
+    if (!confirm) return;
+
+    setIsUpdating(true);
+    try {
+      const dbData = extinguishers.map(ext => ({
+        id: ext.id,
+        code: ext.code,
+        map_id: ext.mapId,
+        location: ext.location,
+        sub_location: ext.subLocation,
+        type: ext.type,
+        capacity: ext.capacity,
+        status: ext.status,
+        last_recharge_date: ext.lastRechargeDate,
+        expiry_date: ext.expiryDate,
+        inspections: ext.inspections || []
+      }));
+
+      const { error } = await supabase.from('extinguishers').upsert(dbData, { onConflict: 'id' });
+      if (error) throw error;
+
+      setNotification({ message: `🚀 Local -> Nuvem: ${extinguishers.length} itens sincronizados!`, type: 'success' });
+    } catch (err: any) {
+      setNotification({ message: "Erro ao enviar: " + err.message, type: 'error' });
     } finally {
       setIsUpdating(false);
       setTimeout(() => setNotification(null), 3000);
@@ -408,7 +448,6 @@ export default function App() {
     }
   }, [activities]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [editingExtinguisher, setEditingExtinguisher] = useState<Extinguisher | null>(null);
   const [inspectingExtinguisher, setInspectingExtinguisher] = useState<Extinguisher | null>(null);
   const [deletingExtinguisherId, setDeletingExtinguisherId] = useState<string | null>(null);
@@ -1586,16 +1625,26 @@ export default function App() {
                   onClick={() => { setCurrentView('map'); setIsSidebarOpen(false); }} 
                 />
                 <div className="my-4 border-t border-gray-100 pt-4 px-2">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ferramentas e Gestão</span>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronização Cloud</span>
                 </div>
-                <button 
-                  onClick={() => { handleSyncWithCloud(); setIsSidebarOpen(false); }}
-                  disabled={isUpdating}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl text-amber-600 bg-amber-50 hover:bg-amber-100 transition-all font-bold text-xs uppercase tracking-widest mb-2 active:scale-95 disabled:opacity-50"
-                >
-                  <RefreshCw size={18} className={isUpdating ? "animate-spin" : ""} />
-                  {isUpdating ? "Sincronizando..." : "Atualizar p/ Nuvem"}
-                </button>
+                <div className="flex flex-col gap-2 px-2">
+                  <button 
+                    onClick={() => { handleSyncFromCloud(); setIsSidebarOpen(false); }}
+                    disabled={isUpdating}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all font-bold text-xs uppercase tracking-widest active:scale-95 disabled:opacity-50"
+                  >
+                    <Download size={18} className={isUpdating ? "animate-spin" : ""} />
+                    Baixar da Nuvem
+                  </button>
+                  <button 
+                    onClick={() => { handleUploadLocalToCloud(); setIsSidebarOpen(false); }}
+                    disabled={isUpdating}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-all font-bold text-xs uppercase tracking-widest active:scale-95 disabled:opacity-50"
+                  >
+                    <Upload size={18} className={isUpdating ? "animate-spin" : ""} />
+                    Subir para Nuvem
+                  </button>
+                </div>
                 <SidebarItem 
                   icon={<FileText size={20} />} 
                   label="Relatórios e PDFs" 
