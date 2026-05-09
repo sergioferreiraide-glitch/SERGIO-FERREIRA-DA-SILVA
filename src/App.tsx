@@ -1,3 +1,7 @@
+/**
+ * Guardião CEASA - Versão 1.0.1
+ * Sistema de Gestão de Extintores
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
