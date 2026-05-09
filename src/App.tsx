@@ -272,12 +272,129 @@ export default function App() {
     }
   });
 
-  // Cache local para evitar perda de dados se o Supabase falhar ou offline
+  // Sincronizar Agora (Função Manual)
+  const handleSyncWithCloud = async () => {
+    if (!supabase) {
+      setNotification({ message: "Supabase não configurado!", type: 'error' });
+      return;
+    }
+    
+    setIsUpdating(true);
+    try {
+      const { data, error } = await supabase.from('extinguishers').select('*').order('code');
+      if (error) throw error;
+      
+      const mapped = data.map((e: any) => ({
+        id: e.id,
+        code: e.code,
+        mapId: e.map_id,
+        location: e.location,
+        subLocation: e.sub_location,
+        type: e.type,
+        capacity: e.capacity,
+        status: e.status,
+        lastRechargeDate: e.last_recharge_date,
+        expiryDate: e.expiry_date,
+        inspections: e.inspections || []
+      }));
+      
+      setExtinguishers(mapped);
+      localStorage.setItem('fire_extinguishers_cache', JSON.stringify(mapped));
+      setNotification({ message: `Sincronizado! ${mapped.length} extintores encontrados.`, type: 'success' });
+    } catch (err: any) {
+      setNotification({ message: "Erro ao sincronizar: " + err.message, type: 'error' });
+    } finally {
+      setIsUpdating(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
   useEffect(() => {
-    if (extinguishers.length > 0) {
+    // Salvamos localmente apenas se não estivermos carregando do banco
+    if (!isUpdating && extinguishers.length > 0) {
       localStorage.setItem('fire_extinguishers_cache', JSON.stringify(extinguishers));
     }
-  }, [extinguishers]);
+  }, [extinguishers, isUpdating]);
+
+  // Sincronização com Supabase
+  useEffect(() => {
+    if (!supabase) return;
+
+    const fetchData = async () => {
+      setIsUpdating(true);
+      try {
+        // Buscar Extintores
+        const { data: extData, error: extError } = await supabase
+          .from('extinguishers')
+          .select('*')
+          .order('code', { ascending: true });
+
+        if (!extError && extData) {
+          const mappedExt = extData.map((e: any) => ({
+            id: e.id,
+            code: e.code,
+            mapId: e.map_id,
+            location: e.location,
+            subLocation: e.sub_location,
+            type: e.type,
+            capacity: e.capacity,
+            status: e.status,
+            lastRechargeDate: e.last_recharge_date,
+            expiryDate: e.expiry_date,
+            inspections: e.inspections || []
+          }));
+          
+          // Banco de dados é o MESTRE da verdade
+          setExtinguishers(mappedExt);
+          localStorage.setItem('fire_extinguishers_cache', JSON.stringify(mappedExt));
+        }
+
+        // Buscar Responsáveis
+        const { data: resData, error: resError } = await supabase
+          .from('responsibles')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (!resError && resData) {
+          setResponsibles(resData);
+        }
+
+        // Buscar Atividades
+        const { data: actData, error: actError } = await supabase
+          .from('activities')
+          .select('*')
+          .order('time', { ascending: false })
+          .limit(20);
+
+        if (!actError && actData) {
+          setActivities(actData.map((a: any) => ({
+            id: a.id,
+            title: a.title,
+            type: a.type,
+            time: new Date(a.time).toLocaleString('pt-BR')
+          })));
+        }
+      } catch (err) {
+        console.error('Erro ao sincronizar:', err);
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+
+    fetchData();
+
+    // Inscrição em Tempo Real (Opcional, mas melhora muito a experiência)
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'extinguishers' }, () => {
+        fetchData(); // Recarregar ao notar mudança
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   useEffect(() => {
     // Salvamos sempre para persistir exclusões, exceto se for o estado inicial estrito
@@ -1471,6 +1588,14 @@ export default function App() {
                 <div className="my-4 border-t border-gray-100 pt-4 px-2">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ferramentas e Gestão</span>
                 </div>
+                <button 
+                  onClick={() => { handleSyncWithCloud(); setIsSidebarOpen(false); }}
+                  disabled={isUpdating}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl text-amber-600 bg-amber-50 hover:bg-amber-100 transition-all font-bold text-xs uppercase tracking-widest mb-2 active:scale-95 disabled:opacity-50"
+                >
+                  <RefreshCw size={18} className={isUpdating ? "animate-spin" : ""} />
+                  {isUpdating ? "Sincronizando..." : "Atualizar p/ Nuvem"}
+                </button>
                 <SidebarItem 
                   icon={<FileText size={20} />} 
                   label="Relatórios e PDFs" 
