@@ -38,7 +38,10 @@ import {
   LogIn,
   Mail,
   Copy,
-  Link
+  Link,
+  Database,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
@@ -54,82 +57,115 @@ const MAP_POSITIONS = [
   'EXT-01', 'EXT-02', 'EXT-03', 'EXT-04', 'EXT-05', 'EXT-06', 'EXT-07', 'EXT-08', // ADM/Guarita
   'EXT-09', 'EXT-10', 'EXT-11', 'EXT-12', 'EXT-13', 'EXT-14', 'EXT-15', 'EXT-16', 'EXT-17', 'EXT-18', // Direito
   'EXT-19', 'EXT-20', 'EXT-21', 'EXT-22', 'EXT-23', 'EXT-24', 'EXT-25', 'EXT-26', 'EXT-27', 'EXT-28', // Central Esq
-  'EXT-29', 'EXT-30', 'EXT-31', // Apoios
+  'EXT-29', 'EXT-30', 'EXT-31', 'ACI-02', // Apoios
   'EXT-32', 'EXT-33', 'EXT-34', 'EXT-35', 'EXT-36', 'EXT-37', 'EXT-38', 'EXT-39', 'EXT-40', 'EXT-41', 'EXT-42', 'EXT-43', 'EXT-44', // Central Dir
-  'EXT-45', 'EXT-46', 'EXT-47', 'EXT-48', 'EXT-49', 'EXT-50', 'EXT-51', 'EXT-52', // Esquerdo
+  'EXT-45', 'EXT-46', 'EXT-47', 'EXT-48', 'EXT-49', 'EXT-50', 'EXT-51', 'EXT-52', 'EXT-53', // Esquerdo
+  'EXT-100', 'EXT-201', 'EXT-222', // Central de Gás e ACI
+  'EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4' // Depósito/Reservas
 ];
 
 const MOCK_EXTINGUISHERS: Extinguisher[] = [
-  // 1. TOPO / ÁREA ADMINISTRATIVA
-  { id: '1', code: 'EXT-01', mapId: 'EXT-01', location: 'ADM', subLocation: 'Sala ADM', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [{ id: 'insp1', date: '16/04/2026', time: '08:00', inspector: 'Sergio Ferreira', checklist: { manometer: true, seal: true, damage: true, access: true, signage: true, inmetro: true, instructions: true, diffuser: true, hose: true } }] },
-  { id: '2', code: 'EXT-02', mapId: 'EXT-02', location: 'ADM', subLocation: 'Sala ADM', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [{ id: 'insp2', date: '16/04/2026', time: '08:15', inspector: 'Sergio Ferreira', checklist: { manometer: true, seal: true, damage: true, access: true, signage: true, inmetro: true, instructions: true, diffuser: true, hose: true } }] },
-  { id: '3', code: 'EXT-03', mapId: 'EXT-03', location: 'ADAPAR', subLocation: 'Recepção', type: 'CO2', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 FEV 2024', expiryDate: '15 FEV 2025', inspections: [{ id: 'insp3', date: '16/04/2026', time: '08:30', inspector: 'Sergio Ferreira', checklist: { manometer: true, seal: true, damage: true, access: true, signage: true, inmetro: true, instructions: true, diffuser: true, hose: true } }] },
-  { id: '4', code: 'EXT-04', mapId: 'EXT-04', location: 'IDR', subLocation: 'Sala Técnica', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 MAR 2024', expiryDate: '20 MAR 2025', inspections: [{ id: 'insp4', date: '16/04/2026', time: '08:45', inspector: 'Sergio Ferreira', checklist: { manometer: true, seal: true, damage: true, access: true, signage: true, inmetro: true, instructions: true, diffuser: true, hose: true } }] },
-  { id: '5', code: 'EXT-05', mapId: 'EXT-05', location: 'ADM EXTERNO', subLocation: 'Pavilhão ADM (Externo)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
-  { id: '6', code: 'EXT-06', mapId: 'EXT-06', location: 'CASA CIVIL', subLocation: 'Cozinha', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
-  { id: '7', code: 'EXT-07', mapId: 'EXT-07', location: 'POÇO', subLocation: 'Poço', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
-  { id: '8', code: 'EXT-08', mapId: 'EXT-08', location: 'GUARITA J.K', subLocation: 'Guarita JK', type: 'Pó Químico (ABC)', capacity: '4kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  // ADM / TOPO (01-08)
+  { id: '11111111-1111-1111-1111-111111111101', code: 'EXT-01', mapId: 'EXT-01', location: 'ADM', subLocation: 'Sala ADM', type: 'Pó Químico (BC)', capacity: '4kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111102', code: 'EXT-02', mapId: 'EXT-02', location: 'ADM', subLocation: 'Sala ADM', type: 'Pó Químico (BC)', capacity: '4kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111103', code: 'EXT-03', mapId: 'EXT-03', location: 'ADAPAR', subLocation: 'Recepção', type: 'CO2', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 FEV 2024', expiryDate: '15 FEV 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111104', code: 'EXT-04', mapId: 'EXT-04', location: 'IDR', subLocation: 'Sala Técnica', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 MAR 2024', expiryDate: '20 MAR 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111105', code: 'EXT-05', mapId: 'EXT-05', location: 'ADM EXTERNO', subLocation: 'Pavilhão ADM (Externo)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111106', code: 'EXT-06', mapId: 'EXT-06', location: 'CASA CIVIL', subLocation: 'Cozinha', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111107', code: 'EXT-07', mapId: 'EXT-07', location: 'POÇO', subLocation: 'Poço', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111108', code: 'EXT-08', mapId: 'EXT-08', location: 'GUARITA J.K', subLocation: 'Guarita JK', type: 'Pó Químico (ABC)', capacity: '4kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  
+  // DIREITO (09-18)
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `11111111-1111-1111-1111-1111111111${String(i + 9).padStart(2, '0')}`,
+    code: i + 9 < 10 ? `EXT-0${i + 9}` : `EXT-${i + 9}`,
+    mapId: i + 9 < 10 ? `EXT-0${i + 9}` : `EXT-${i + 9}`,
+    location: 'Direito',
+    subLocation: ['NIEHUES', 'JAAM', 'BOX 49', 'MELHORANÇA', 'SÃO MIGUEL', '3 IRMÃOS', 'OLIVEIRA', 'NACO', 'TABAJARA', 'WALKER'][i],
+    type: [3, 9].includes(i) ? 'CO2' : 'Pó Químico (ABC)',
+    capacity: '6kg',
+    status: (i === 3 ? 'Manutenção' : 'Seguro') as any,
+    lastRechargeDate: '15 DEZ 2023',
+    expiryDate: '15 DEZ 2024',
+    inspections: []
+  })),
 
-  // 2. PAVILHÃO DIREITO
-  { id: '9', code: 'EXT-09', mapId: 'EXT-09', location: 'Direito', subLocation: 'NIEHUES', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '10', code: 'EXT-10', mapId: 'EXT-10', location: 'Direito', subLocation: 'JAAM', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '11', code: 'EXT-11', mapId: 'EXT-11', location: 'Direito', subLocation: 'BOX 49', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '12', code: 'EXT-12', mapId: 'EXT-12', location: 'Direito', subLocation: 'MELHORANÇA', type: 'CO2', capacity: '6kg', status: 'Manutenção', lastRechargeDate: '10 NOV 2023', expiryDate: '10 NOV 2024', inspections: [] },
-  { id: '13', code: 'EXT-13', mapId: 'EXT-13', location: 'Direito', subLocation: 'SÃO MIGUEL', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '14', code: 'EXT-14', mapId: 'EXT-14', location: 'Direito', subLocation: '3 IRMÃOS', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '15', code: 'EXT-15', mapId: 'EXT-15', location: 'Direito', subLocation: 'OLIVEIRA', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '16', code: 'EXT-16', mapId: 'EXT-16', location: 'Direito', subLocation: 'NACO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '17', code: 'EXT-17', mapId: 'EXT-17', location: 'Direito', subLocation: 'TABAJARA', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
-  { id: '18', code: 'EXT-18', mapId: 'EXT-18', location: 'Direito', subLocation: 'WALKER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '15 DEZ 2023', expiryDate: '15 DEZ 2024', inspections: [] },
+  // CENTRAL ESQUERDO (19-28)
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `11111111-1111-1111-1111-1111111111${i + 19}`,
+    code: `EXT-${i + 19}`,
+    mapId: `EXT-${i + 19}`,
+    location: 'Central Esquerdo',
+    subLocation: ['COSER', 'COSER', 'COSER', 'VDF', 'CONSTANTINO', 'AQUARELA', 'HUBNER', 'KILANCHÃO', 'OLICAMPO', 'MENDES'][i],
+    type: 'Pó Químico (ABC)',
+    capacity: '6kg',
+    status: 'Seguro' as any,
+    lastRechargeDate: '20 JAN 2024',
+    expiryDate: '20 JAN 2025',
+    inspections: []
+  })),
 
-  // Apoios
-  { id: '29', code: 'EXT-29', mapId: 'EXT-29', location: 'GUARITA DUQUE', subLocation: 'Guarita Duque (Interno)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
-  { id: '30', code: 'EXT-30', mapId: 'EXT-30', location: 'GUARITA DUQUE', subLocation: 'Guarita Duque (Externo)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
-  { id: '31', code: 'EXT-31', mapId: 'EXT-31', location: 'ACI-MAPA', subLocation: 'ACI (Mapa)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  // APOIOS
+  { id: '11111111-1111-1111-1111-111111111129', code: 'EXT-29', mapId: 'EXT-29', location: 'GUARITA DUQUE', subLocation: 'Guarita Duque (Interno)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro' as any, lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111130', code: 'EXT-30', mapId: 'EXT-30', location: 'GUARITA DUQUE', subLocation: 'Guarita Duque (Externo)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro' as any, lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
+  { id: '11111111-1111-1111-1111-111111111131', code: 'EXT-31', mapId: 'EXT-31', location: 'ACI-MAPA', subLocation: 'ACI (Mapa)', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro' as any, lastRechargeDate: '10 JAN 2024', expiryDate: '10 JAN 2025', inspections: [] },
 
-  // 3. PAVILHÃO CENTRAL - LADO ESQUERDO
-  { id: '19', code: 'EXT-19', mapId: 'EXT-19', location: 'Central Esquerdo', subLocation: 'COSER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '20', code: 'EXT-20', mapId: 'EXT-20', location: 'Central Esquerdo', subLocation: 'COSER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '21', code: 'EXT-21', mapId: 'EXT-21', location: 'Central Esquerdo', subLocation: 'COSER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '22', code: 'EXT-22', mapId: 'EXT-22', location: 'Central Esquerdo', subLocation: 'VDF', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '23', code: 'EXT-23', mapId: 'EXT-23', location: 'Central Esquerdo', subLocation: 'CONSTANTINO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '24', code: 'EXT-24', mapId: 'EXT-24', location: 'Central Esquerdo', subLocation: 'AQUARELA', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '25', code: 'EXT-25', mapId: 'EXT-25', location: 'Central Esquerdo', subLocation: 'HUBNER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '26', code: 'EXT-26', mapId: 'EXT-26', location: 'Central Esquerdo', subLocation: 'KILANCHÃO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '27', code: 'EXT-27', mapId: 'EXT-27', location: 'Central Esquerdo', subLocation: 'OLICAMPO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '28', code: 'EXT-28', mapId: 'EXT-28', location: 'Central Esquerdo', subLocation: 'MENDES', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
+  // CENTRAL DIREITO (32-41)
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `11111111-1111-1111-1111-1111111111${i + 32}`,
+    code: `EXT-${i + 32}`,
+    mapId: `EXT-${i + 32}`,
+    location: 'Central Direito',
+    subLocation: ['COLORADO', 'ADRIANA', 'ESTRELA DO OESTE', 'CONSTANTINO', 'CONSTANTINO', 'AQUARELA', 'HUBNER', 'KILANCHÃO', 'BERGAMINI', 'BERGAMINI'][i],
+    type: 'Pó Químico (ABC)',
+    capacity: '6kg',
+    status: 'Seguro' as any,
+    lastRechargeDate: '20 JAN 2024',
+    expiryDate: '20 JAN 2025',
+    inspections: []
+  })),
 
-  // 4. PAVILHÃO CENTRAL - LADO DIREITO
-  { id: '32', code: 'EXT-32', mapId: 'EXT-32', location: 'Central Direito', subLocation: 'COLORADO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '33', code: 'EXT-33', mapId: 'EXT-33', location: 'Central Direito', subLocation: 'ADRIANA', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '34', code: 'EXT-34', mapId: 'EXT-34', location: 'Central Direito', subLocation: 'ESTRELA DO OESTE', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '35', code: 'EXT-35', mapId: 'EXT-35', location: 'Central Direito', subLocation: 'CONSTANTINO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '36', code: 'EXT-36', mapId: 'EXT-36', location: 'Central Direito', subLocation: 'CONSTANTINO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '37', code: 'EXT-37', mapId: 'EXT-37', location: 'Central Direito', subLocation: 'AQUARELA', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '38', code: 'EXT-38', mapId: 'EXT-38', location: 'Central Direito', subLocation: 'HUBNER', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '39', code: 'EXT-39', mapId: 'EXT-39', location: 'Central Direito', subLocation: 'KILANCHÃO', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '40', code: 'EXT-40', mapId: 'EXT-40', location: 'Central Direito', subLocation: 'BERGAMINI', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '41', code: 'EXT-41', mapId: 'EXT-41', location: 'Central Direito', subLocation: 'BERGAMINI', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '42', code: 'EXT-42', mapId: 'EXT-42', location: 'Central Direito', subLocation: 'BOX 42', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '43', code: 'EXT-43', mapId: 'EXT-43', location: 'Central Direito', subLocation: 'BOX 43', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
-  { id: '44', code: 'EXT-44', mapId: 'EXT-44', location: 'Central Direito', subLocation: 'BOX 44', type: 'Pó Químico (ABC)', capacity: '6kg', status: 'Seguro', lastRechargeDate: '20 JAN 2024', expiryDate: '20 JAN 2025', inspections: [] },
+  // DEPÓSITO (Reservas R1-R4)
+  ...Array.from({ length: 4 }, (_, i) => ({
+    id: `reserve-ext-${i + 1}`,
+    code: `EXT-R${i + 1}`,
+    mapId: `EXT-R${i + 1}`,
+    location: 'DEPÓSITO',
+    subLocation: 'Estoque de Reserva',
+    type: 'Pó Químico (ABC)',
+    capacity: '6kg',
+    status: 'Seguro' as any,
+    lastRechargeDate: '01 JAN 2025',
+    expiryDate: '01 JAN 2026',
+    inspections: []
+  })),
 
-  // Pavilhão Esquerdo
-  { id: '52', code: 'EXT-52', mapId: 'EXT-52', location: 'Esquerdo', subLocation: 'Corupá', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '51', code: 'EXT-51', mapId: 'EXT-51', location: 'Esquerdo', subLocation: 'Corupá', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '50', code: 'EXT-50', mapId: 'EXT-50', location: 'Esquerdo', subLocation: 'Corupá', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '49', code: 'EXT-49', mapId: 'EXT-49', location: 'Esquerdo', subLocation: 'Maravilha', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '48', code: 'EXT-48', mapId: 'EXT-48', location: 'Esquerdo', subLocation: 'Maravilha', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '47', code: 'EXT-47', mapId: 'EXT-47', location: 'Esquerdo', subLocation: 'Camila Lamb', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '46', code: 'EXT-46', mapId: 'EXT-46', location: 'Esquerdo', subLocation: 'Foz Mar', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
-  { id: '45', code: 'EXT-45', mapId: 'EXT-45', location: 'Esquerdo', subLocation: 'Santa Helena', type: 'Água (H2O)', capacity: '10L', status: 'Seguro', lastRechargeDate: '01 OUT 2024', expiryDate: '01 OUT 2025', inspections: [] },
+  // ESQUERDO (42-53)
+  ...Array.from({ length: 12 }, (_, i) => ({
+    id: `11111111-1111-1111-1111-1111111111${i + 42}`,
+    code: `EXT-${i + 42}`,
+    mapId: `EXT-${i + 42}`,
+    location: i < 10 ? 'Esquerdo' : 'ADM',
+    subLocation: ['BANCO DE ALIMENTOS', 'BANCO DE ALIMENTOS', 'BOX 44', 'Santa Helena', 'Foz Mar', 'Camila Lamb', 'Maravilha', 'Maravilha', 'Corupá', 'Corupá', 'Sala Extra', 'Arquivos'][i],
+    type: i < 10 ? 'Água (H2O)' : 'CO2',
+    capacity: i < 10 ? '10L' : '6kg',
+    status: 'Seguro' as any,
+    lastRechargeDate: '01 OUT 2024',
+    expiryDate: '01 OUT 2025',
+    inspections: []
+  })),
 ];
 
 const MOCK_ACTIVITIES: Activity[] = [
-  { id: '1', title: 'Inspeção realizada no Pavilhão Direito, Box Niehues', type: 'Concluído', time: 'há 12 minutos' },
-  { id: '2', title: 'Substituição de Lacre: Pavilhão Central, Coluna 12', type: 'Manutenção', time: 'há 2 horas' },
-  { id: '3', title: 'Vencimento Reportado: Pavilhão Norte, Box 45', type: 'Alerta', time: 'há 5 horas' },
-  { id: '4', title: 'Novo Extintor Cadastrado: Pavilhão Sul, Adm', type: 'Novo Item', time: 'Ontem, 16:45' },
+  { id: 'act1', title: 'Inspeção realizada no Pavilhão Direito, Box Niehues', type: 'Concluído', time: 'há 12 minutos' },
+  { id: 'act2', title: 'Substituição de Lacre: Pavilhão Central, Coluna 12', type: 'Manutenção', time: 'há 2 horas' },
+  { id: 'act3', title: 'Vencimento Reportado: Pavilhão Norte, Box 45', type: 'Alerta', time: 'há 5 horas' },
+  { id: 'act4', title: 'Novo Extintor Cadastrado: Pavilhão Sul, Adm', type: 'Novo Item', time: 'Ontem, 16:45' },
+];
+
+const MOCK_RESPONSIBLES: Responsible[] = [
+  { id: '11111111-2222-3333-4444-555555555501', name: 'SERGIO FERREIRA DA SILVA', role: 'FISCAL SUPERVISOR', email: 'sergioferreira.ide@gmail.com', phone: '45991353552' },
+  { id: '11111111-2222-3333-4444-555555555502', name: 'MANUTENÇÃO TÉCNICA', role: 'EQUIPE EXTERNA', email: 'contato@manutencao.com', phone: '0800-000-000' }
 ];
 
 const CEASA_LOGO_URL = "https://images.weserv.nl/?url=www.ceasa.pr.gov.br/sites/ceasa/templates/ceasa/images/logo_ceasa.png";
@@ -161,11 +197,96 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showSqlSetupModal, setShowSqlSetupModal] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
-  const [extinguishers, setExtinguishers] = useState<Extinguisher[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [responsibles, setResponsibles] = useState<Responsible[]>([]);
+  const [extinguishers, setExtinguishers] = useState<Extinguisher[]>(() => {
+    try {
+      const saved = localStorage.getItem('fire_extinguishers_cache');
+      let data = saved ? JSON.parse(saved) : MOCK_EXTINGUISHERS;
+      
+      // Forçar a existência única e localização correta dos extintores de reserva
+      const reserves = ['EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4'];
+      
+      // 1. Remover duplicados e garantir que códigos R1-R4 pertençam ao DEPÓSITO
+      let uniqueData: any[] = [];
+      const seenCodes = new Set();
+      
+      data.forEach((e: any) => {
+        const code = e.code;
+        if (!seenCodes.has(code)) {
+          seenCodes.add(code);
+          // Forçar local para qualquer R
+          if (code.startsWith('EXT-R')) {
+            uniqueData.push({ ...e, location: 'DEPÓSITO' });
+          } else {
+            uniqueData.push(e);
+          }
+        }
+      });
+
+      // 2. Adicionar o que estiver faltando do R1-R4
+      const currentCodes = uniqueData.map((e: any) => e.code);
+      const missingReserves = reserves.filter(r => !currentCodes.includes(r));
+      
+      if (missingReserves.length > 0) {
+        const newReserves = missingReserves.map(code => ({
+          id: `res-${code}-${Math.random().toString(36).substr(2, 9)}`,
+          code: code,
+          mapId: code,
+          location: 'DEPÓSITO',
+          subLocation: 'Reserva Técnica',
+          type: 'Pó Químico (ABC)',
+          capacity: '6kg',
+          status: 'Seguro' as any,
+          lastRechargeDate: '01 JAN 2025',
+          expiryDate: '01 JAN 2026',
+          inspections: []
+        }));
+        uniqueData = [...uniqueData, ...newReserves];
+      }
+
+      return uniqueData;
+    } catch (e) {
+      return MOCK_EXTINGUISHERS;
+    }
+  });
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    try {
+      const saved = localStorage.getItem('fire_activities_cache');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [responsibles, setResponsibles] = useState<Responsible[]>(() => {
+    try {
+      const saved = localStorage.getItem('fire_responsibles_cache');
+      return saved ? JSON.parse(saved) : MOCK_RESPONSIBLES;
+    } catch (e) {
+      return MOCK_RESPONSIBLES;
+    }
+  });
+
+  // Cache local para evitar perda de dados se o Supabase falhar ou offline
+  useEffect(() => {
+    if (extinguishers.length > 0) {
+      localStorage.setItem('fire_extinguishers_cache', JSON.stringify(extinguishers));
+    }
+  }, [extinguishers]);
+
+  useEffect(() => {
+    // Salvamos sempre para persistir exclusões, exceto se for o estado inicial estrito
+    // que poderia ser sobrescrito por um array vazio antes do fetch (embora o useState já comece com algo).
+    localStorage.setItem('fire_responsibles_cache', JSON.stringify(responsibles));
+  }, [responsibles]);
+
+  useEffect(() => {
+    if (activities.length > 0) {
+      localStorage.setItem('fire_activities_cache', JSON.stringify(activities));
+    }
+  }, [activities]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [editingExtinguisher, setEditingExtinguisher] = useState<Extinguisher | null>(null);
   const [inspectingExtinguisher, setInspectingExtinguisher] = useState<Extinguisher | null>(null);
@@ -194,6 +315,27 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inspectCode = params.get('inspect') || params.get('code') || params.get('id');
+    
+    if (inspectCode && extinguishers.length > 0) {
+      const ext = extinguishers.find(e => 
+        e.code === inspectCode || 
+        e.mapId === inspectCode || 
+        e.id === inspectCode
+      );
+      
+      if (ext) {
+        setInspectingExtinguisher(ext);
+        setCurrentView('inspect_list');
+        // Clear parameters from URL without refreshing to keep it clean
+        // window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [extinguishers]);
+
+  // Auth Listener (Existing)
+  useEffect(() => {
     if (!supabase) {
       setIsAuthReady(true);
       return;
@@ -212,17 +354,33 @@ export default function App() {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsAuthReady(true);
-    });
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (err) {
+        console.error("Auth error on start:", err);
+      } finally {
+        setIsAuthReady(true);
+      }
+    };
+
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setIsAuthReady(true);
     });
 
-    return () => subscription.unsubscribe();
+    // Timeout safety for auth ready
+    const timeout = setTimeout(() => {
+      setIsAuthReady(true);
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Deeplink Handler
@@ -245,40 +403,133 @@ export default function App() {
 
   // Supabase Sync
   useEffect(() => {
-    if (isGuest) {
+    // Se não houver supabase, usamos apenas os mocks
+    if (!supabase) {
       setExtinguishers(MOCK_EXTINGUISHERS);
       setActivities(MOCK_ACTIVITIES);
-      setResponsibles([
-        { name: 'Sergio Ferreira da Silva', role: 'Técnico de Segurança', email: 'sergio@ceasa.com', phone: '(45) 99999-0001' },
-        { name: 'João Silva', role: 'Auxiliar Técnico', email: 'joao@ceasa.com', phone: '(45) 99999-0002' }
-      ]);
       return;
     }
 
-    if (!user || !supabase) return;
-
     const fetchData = async () => {
-      const { data: exts } = await supabase.from('extinguishers').select('*').order('code');
-      if (exts) setExtinguishers(exts);
+      try {
+        console.log("Iniciando busca paralela de dados no Supabase...");
+        
+        const [rExts, rResps, rActs] = await Promise.all([
+          supabase.from('extinguishers').select('*').order('code'),
+          supabase.from('responsibles').select('*').order('name'),
+          supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(20)
+        ]);
+        
+        if (rResps.error) console.error("Erro ao carregar responsáveis:", rResps.error);
+        if (rActs.error) console.error("Erro ao carregar atividades:", rActs.error);
 
-      const { data: resps } = await supabase.from('responsibles').select('*').order('name');
-      if (resps) setResponsibles(resps);
+        if (rExts.error) {
+          console.warn("Erro ao buscar database:", rExts.error.message);
+          // Não mostramos mais o modal automaticamente para não atrapalhar o uso
+          if (extinguishers.length === 0) setExtinguishers(MOCK_EXTINGUISHERS);
+        } else if (rExts.data) {
+          console.log(`Sucesso: ${rExts.data.length} itens do banco.`);
+          setShowSqlSetupModal(false); // Esconder modal se as tabelas existem
+          if (rExts.data.length > 0) {
+            const mappedExts = rExts.data.map((e: any) => ({
+              ...e,
+              mapId: e.map_id,
+              subLocation: e.sub_location,
+              lastRechargeDate: e.last_recharge_date,
+              expiryDate: e.expiry_date
+            }));
+            setExtinguishers(mappedExts);
+          } else if (extinguishers.length === 0) {
+            setExtinguishers(MOCK_EXTINGUISHERS);
+          }
+        }
 
-      const { data: acts } = await supabase.from('activities').select('*').order('time', { ascending: false });
-      if (acts) setActivities(acts);
+        if (rResps.data) {
+          if (rResps.data.length > 0) {
+            setResponsibles(rResps.data);
+          } else {
+            // Se o servidor está explicitamente vazio e não estamos em modo "guest",
+            // limpamos a lista (não forçamos os mocks de volta se o usuário apagou tudo)
+            setResponsibles([]);
+          }
+        } else if (responsibles.length === 0) {
+          // Apenas se não houver dados nenhum (nem no servidor nem local), usamos mocks
+          setResponsibles(MOCK_RESPONSIBLES);
+        }
+        if (rActs.data) {
+          const mappedActs = rActs.data.map((a: any) => ({
+            ...a,
+            time: a.created_at ? new Date(a.created_at).toLocaleString('pt-BR') : a.time
+          }));
+          setActivities(mappedActs);
+        }
+      } catch (err) {
+        console.error("Erro no fetch:", err);
+      }
     };
 
     fetchData();
 
-    // Set up real-time subscriptions
-    const subExt = supabase.channel('exts_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'extinguishers' }, fetchData).subscribe();
-    const subResp = supabase.channel('resps_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'responsibles' }, fetchData).subscribe();
-    const subAct = supabase.channel('acts_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, fetchData).subscribe();
+    const channel = supabase.channel('db_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'extinguishers' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newExt = payload.new as any;
+          const mapped = {
+            ...newExt,
+            mapId: newExt.map_id,
+            subLocation: newExt.sub_location,
+            lastRechargeDate: newExt.last_recharge_date,
+            expiryDate: newExt.expiry_date
+          };
+          setExtinguishers(prev => {
+            if (prev.find(e => e.id === mapped.id)) return prev;
+            return [...prev, mapped].sort((a, b) => a.code.localeCompare(b.code));
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          const mapped = {
+            ...updated,
+            mapId: updated.map_id,
+            subLocation: updated.sub_location,
+            lastRechargeDate: updated.last_recharge_date,
+            expiryDate: updated.expiry_date
+          };
+          setExtinguishers(prev => prev.map(e => e.id === mapped.id ? mapped : e));
+        } else if (payload.eventType === 'DELETE') {
+          setExtinguishers(prev => prev.filter(e => e.id !== payload.old.id));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'responsibles' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newResp = payload.new as Responsible;
+          setResponsibles(prev => {
+            if (prev.find(r => r.id === newResp.id)) return prev;
+            return [...prev, newResp].sort((a, b) => a.name.localeCompare(b.name));
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as Responsible;
+          setResponsibles(prev => prev.map(r => r.id === updated.id ? updated : r));
+        } else if (payload.eventType === 'DELETE') {
+          setResponsibles(prev => prev.filter(r => r.id !== payload.old.id));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newAct = payload.new as any;
+          const mapped = {
+            ...newAct,
+            time: newAct.created_at ? new Date(newAct.created_at).toLocaleString('pt-BR') : newAct.time
+          };
+          setActivities(prev => {
+            if (prev.find(a => a.id === mapped.id)) return prev;
+            return [mapped, ...prev].slice(0, 50);
+          });
+        }
+      })
+      .subscribe();
 
     return () => {
-      subExt.unsubscribe();
-      subResp.unsubscribe();
-      subAct.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [user, isGuest]);
 
@@ -307,10 +558,10 @@ export default function App() {
           
           setNotification({ message: "Configurações aplicadas via Link Mágico!", type: 'success' });
           
-          // Use a clean redirect to avoid infinite reload loops
+          // Use a cleaner redirect
           setTimeout(() => {
-            window.location.href = window.location.origin + window.location.pathname;
-          }, 1500);
+            window.location.replace(window.location.origin + window.location.pathname);
+          }, 1000);
         }
       } catch (e) {
         console.error("Erro ao decodificar link mágico:", e);
@@ -370,11 +621,18 @@ export default function App() {
   };
 
   const handleStatusChange = async (id: string, newStatus: Extinguisher['status']) => {
+    // Update locally for immediate feedback (and for Guest mode)
+    setExtinguishers(prev => prev.map(ext => ext.id === id ? { ...ext, status: newStatus } : ext));
+
+    if (!supabase || isGuest) return;
+
     try {
       const { error } = await supabase.from('extinguishers').update({ status: newStatus }).eq('id', id);
       if (error) throw error;
     } catch (error) {
       console.error("Error updating status:", error);
+      setNotification({ message: "Erro ao sincronizar status com servidor.", type: 'error' });
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -384,52 +642,128 @@ export default function App() {
 
   const confirmDelete = async () => {
     if (deletingExtinguisherId) {
+      // Update locally
+      setExtinguishers(prev => prev.filter(ext => ext.id !== deletingExtinguisherId));
+
+      if (!supabase || isGuest) {
+        setDeletingExtinguisherId(null);
+        return;
+      }
+
       try {
         const { error } = await supabase.from('extinguishers').delete().eq('id', deletingExtinguisherId);
         if (error) throw error;
         setDeletingExtinguisherId(null);
       } catch (error) {
         console.error("Error deleting extinguisher:", error);
+        setNotification({ message: "Erro ao sincronizar exclusão.", type: 'error' });
+        setTimeout(() => setNotification(null), 3000);
       }
     }
   };
 
   const handleUpdateExtinguisher = async (updatedExt: Extinguisher) => {
-    const { id, ...data } = updatedExt;
-    setIsUpdating(true);
+    const { id, ...rest } = updatedExt;
+    
+    // Update locally for immediate UI response
+    setExtinguishers(prev => prev.map(ext => ext.id === id ? updatedExt : ext));
+    setEditingExtinguisher(null);
+
+    if (!supabase) {
+      setNotification({ message: "Alteração salva localmente!", type: 'success' });
+      setTimeout(() => setNotification(null), 2000);
+      return;
+    }
+
     try {
-      const { error } = await supabase.from('extinguishers').update(data).eq('id', id);
+      const dbData = {
+        code: updatedExt.code,
+        map_id: updatedExt.mapId,
+        location: updatedExt.location,
+        sub_location: updatedExt.subLocation,
+        type: updatedExt.type,
+        capacity: updatedExt.capacity,
+        status: updatedExt.status,
+        last_recharge_date: updatedExt.lastRechargeDate,
+        expiry_date: updatedExt.expiryDate,
+        inspections: updatedExt.inspections || []
+      };
+
+      const { error } = await supabase
+        .from('extinguishers')
+        .upsert([{ id, ...dbData }], { onConflict: 'id' });
+
       if (error) throw error;
-      setEditingExtinguisher(null);
-      setNotification({ message: "Cadastro atualizado com sucesso!", type: 'success' });
-      setTimeout(() => setNotification(null), 3000);
-    } catch (error) {
-      console.error("Error updating extinguisher:", error);
-      setNotification({ message: "Erro ao atualizar cadastro. Verifique sua conexão.", type: 'error' });
-      setTimeout(() => setNotification(null), 3000);
-    } finally {
-      setIsUpdating(false);
+      
+      setNotification({ message: "Sincronizado com Nuvem!", type: 'success' });
+      setTimeout(() => setNotification(null), 1500);
+    } catch (error: any) {
+      console.error("Critical error in handleUpdateExtinguisher:", error);
+      setNotification({ 
+        message: `⚠️ Erro ao sincronizar: ${error.message || 'Verifique conexão'}`, 
+        type: 'error' 
+      });
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
   const handleAddExtinguisher = async (newExt: Omit<Extinguisher, 'id' | 'inspections' | 'status'>) => {
+    const id = crypto.randomUUID();
+    const fullNewExt: Extinguisher = { 
+      ...newExt, 
+      id, 
+      status: 'Seguro', 
+      inspections: [],
+      lastRechargeDate: (newExt as any).lastRechargeDate || new Date().toLocaleDateString('pt-BR'),
+      expiryDate: (newExt as any).expiryDate || new Date().toLocaleDateString('pt-BR')
+    };
+
+    // Update locally instantly
+    setExtinguishers(prev => [...prev, fullNewExt]);
+    setCurrentView('inventory');
+
+    setActivities(prev => [{
+      id: crypto.randomUUID(),
+      title: `Novo Extintor Cadastrado: ${newExt.code}`,
+      type: 'Novo Item' as any,
+      time: 'Agora'
+    }, ...prev]);
+
+    if (!supabase) {
+      setNotification({ message: "Item adicionado localmente!", type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
     try {
-      const { error: extError } = await supabase.from('extinguishers').insert([{
-        ...newExt,
+      const dbData = {
+        id,
+        code: newExt.code,
+        map_id: newExt.mapId,
+        location: newExt.location,
+        sub_location: newExt.subLocation,
+        type: newExt.type,
+        capacity: newExt.capacity,
+        last_recharge_date: fullNewExt.lastRechargeDate,
+        expiry_date: fullNewExt.expiryDate,
         status: 'Seguro',
         inspections: []
-      }]);
+      };
+
+      const { error: extError } = await supabase.from('extinguishers').insert([dbData]);
       if (extError) throw extError;
       
-      const { error: actError } = await supabase.from('activities').insert([{
+      await supabase.from('activities').insert([{
         title: `Novo Extintor Cadastrado: ${newExt.code}`,
         type: 'Novo Item'
       }]);
-      if (actError) throw actError;
 
-      setCurrentView('inventory');
-    } catch (error) {
+      setNotification({ message: "Cadastrado no Banco!", type: 'success' });
+    } catch (error: any) {
       console.error("Error adding extinguisher:", error);
+      setNotification({ message: `Erro na sincronização: ${error.message}`, type: 'error' });
+    } finally {
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -455,36 +789,106 @@ export default function App() {
       date: inspectionDate || new Date().toLocaleDateString('pt-BR'),
       time: inspectionTime || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       month: inspectionMonth,
-      inspector: user?.user_metadata?.full_name || user?.email || responsibles[0]?.name || 'Sistema',
+      inspector: user?.user_metadata?.full_name || user?.email || (isGuest ? 'Usuário Convidado' : responsibles[0]?.name) || 'Sistema',
       checklist,
       notes,
       photos
     };
 
+    const existingIndex = inspectingExtinguisher.inspections.findIndex(i => i.month === (inspectionMonth || new Date().toLocaleString('pt-BR', { month: 'long' }).toUpperCase()));
+    
+    let updatedInspections;
+    if (existingIndex >= 0) {
+      updatedInspections = [...inspectingExtinguisher.inspections];
+      updatedInspections[existingIndex] = { 
+        ...newInspection, 
+        id: updatedInspections[existingIndex].id,
+        // Mantemos a data original da primeira inspeção do mês ou atualizamos? 
+        // O usuário disse "revisar a inspeção", então atualizar para a data/hora atual da revisão parece correto.
+      };
+    } else {
+      updatedInspections = [newInspection, ...inspectingExtinguisher.inspections];
+    }
+
     const hasIssues = Object.values(checklist).some(val => val === false);
     const newStatus = hasIssues ? 'Manutenção' : 'Seguro';
+
+    // Update locally
+    setExtinguishers(prev => prev.map(ext => ext.id === inspectingExtinguisher.id ? {
+      ...ext,
+      status: newStatus,
+      lastRechargeDate: lastRecharge || ext.lastRechargeDate,
+      expiryDate: nextRecharge || ext.expiryDate,
+      inspections: updatedInspections
+    } : ext));
+
+    setActivities(prev => [{
+      id: Math.random().toString(36).substr(2, 9),
+      title: existingIndex >= 0 ? `Inspeção revisada: ${inspectingExtinguisher.code}` : `Inspeção realizada: ${inspectingExtinguisher.code}`,
+      type: hasIssues ? 'Manutenção' : 'Concluído' as any,
+      time: 'Agora'
+    }, ...prev]);
+
+    // UI response immediately
+    setInspectingExtinguisher(null);
+    setCurrentView('inventory');
+
+    if (!supabase || isGuest) {
+      setNotification({ message: existingIndex >= 0 ? "Revisão gravada localmente!" : "Inspeção gravada localmente!", type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
 
     try {
       const { error: extError } = await supabase.from('extinguishers').update({
         status: newStatus,
-        lastRechargeDate: lastRecharge || inspectingExtinguisher.lastRechargeDate,
-        expiryDate: nextRecharge || inspectingExtinguisher.expiryDate,
-        inspections: [newInspection, ...inspectingExtinguisher.inspections]
+        last_recharge_date: lastRecharge || inspectingExtinguisher.lastRechargeDate,
+        expiry_date: nextRecharge || inspectingExtinguisher.expiryDate,
+        inspections: updatedInspections
       }).eq('id', inspectingExtinguisher.id);
+      
       if (extError) throw extError;
 
-      const { error: actError } = await supabase.from('activities').insert([{
-        title: `Inspeção realizada: ${inspectingExtinguisher.code}`,
+      await supabase.from('activities').insert([{
+        title: existingIndex >= 0 ? `Inspeção revisada: ${inspectingExtinguisher.code}` : `Inspeção realizada: ${inspectingExtinguisher.code}`,
         type: hasIssues ? 'Manutenção' : 'Concluído'
       }]);
-      if (actError) throw actError;
 
-      setInspectingExtinguisher(null);
-      setCurrentView('inventory');
+      setNotification({ message: existingIndex >= 0 ? "Revisão Sincronizada!" : "Inspeção Sincronizada!", type: 'success' });
     } catch (error) {
       console.error("Error saving inspection:", error);
+      setNotification({ message: "Erro de sincronização. Mantido localmente.", type: 'error' });
+    } finally {
+      setTimeout(() => setNotification(null), 3000);
     }
   };
+
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error' | 'disconnected' | 'loading'>('checking');
+
+  useEffect(() => {
+    const checkConn = async () => {
+      if (!supabase) {
+        setDbStatus('disconnected');
+        return;
+      }
+      try {
+        const { error } = await supabase.from('extinguishers').select('id').limit(1);
+        if (error) {
+          if (error.message?.includes('schema cache')) {
+            setDbStatus('connected'); // Table exists but cache is stale
+          } else {
+            console.error("Connection check error:", error);
+            setDbStatus('error');
+          }
+        } else {
+          setDbStatus('connected');
+        }
+      } catch (e) {
+        setDbStatus('error');
+      }
+    };
+    checkConn();
+  }, []);
 
   const handleImportMockData = async () => {
     if (extinguishers.length > 0 && !showImportConfirm) {
@@ -494,28 +898,83 @@ export default function App() {
 
     setShowImportConfirm(false);
     try {
-      for (const ext of MOCK_EXTINGUISHERS) {
-        const { id, ...data } = ext;
-        await supabase.from('extinguishers').insert([data]);
+      setNotification({ message: "CONECTANDO AO BANCO...", type: 'info' });
+      
+      if (!supabase) throw new Error("Supabase não configurado.");
+
+      // 1. Verificar se as tabelas existem (tentativa de ping)
+      const { error: pingError } = await supabase.from('extinguishers').select('id').limit(1);
+      
+      if (pingError && pingError.message?.includes('schema cache')) {
+         setNotification({ message: "RECARREGANDO SCHEMA DO SUPABASE...", type: 'info' });
+         // Esperar um pouco e tentar novamente
+         await new Promise(resolve => setTimeout(resolve, 2000));
       }
-      for (const act of MOCK_ACTIVITIES) {
-        const { id, time, ...data } = act;
-        await supabase.from('activities').insert([data]);
+
+      setNotification({ message: "LIMPANDO DADOS ANTIGOS...", type: 'info' });
+
+      // 1. Limpar e Inserir Extintores
+      try {
+        // Deletar tudo
+        const { error: delError } = await supabase.from('extinguishers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        if (delError) throw delError;
+        
+        setNotification({ message: "INSERINDO 54 EXTINTORES...", type: 'info' });
+
+        const dataToInsert = MOCK_EXTINGUISHERS.map(ext => ({
+          id: ext.id,
+          code: ext.code,
+          map_id: ext.mapId,
+          location: ext.location,
+          sub_location: ext.subLocation,
+          type: ext.type,
+          capacity: ext.capacity,
+          status: ext.status,
+          last_recharge_date: ext.lastRechargeDate,
+          expiry_date: ext.expiryDate,
+          inspections: ext.inspections
+        }));
+
+        const chunkSize = 15; // Menor chunk para garantir sucesso
+        for (let i = 0; i < dataToInsert.length; i += chunkSize) {
+          const chunk = dataToInsert.slice(i, i + chunkSize);
+          const { error } = await supabase.from('extinguishers').insert(chunk);
+          if (error) throw error;
+        }
+      } catch (e: any) {
+        console.error("Erro na tabela extinguishers:", e);
+        if (e.message?.includes('schema cache')) {
+          throw new Error("O Supabase ainda não reconheceu as tabelas. Vá no SQL Editor do Supabase e execute: NOTIFY pgrst, 'reload schema';");
+        }
+        throw new Error(`Erro na tabela extinguishers: ${e.message || JSON.stringify(e)}`);
       }
-      const initialResponsibles = [
-        { name: 'Sergio Ferreira da Silva', role: 'Técnico de Segurança', email: 'sergio@ceasa.com', phone: '(45) 99999-0001' },
-        { name: 'João Silva', role: 'Auxiliar Técnico', email: 'joao@ceasa.com', phone: '(45) 99999-0002' }
-      ];
-      for (const resp of initialResponsibles) {
-        await supabase.from('responsibles').insert([resp]);
+
+      // 2. Limpar e Inserir Atividades
+      try {
+        await supabase.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        const actData = MOCK_ACTIVITIES.map(act => ({
+          title: act.title,
+          type: act.type,
+          time: act.time
+        }));
+        await supabase.from('activities').insert(actData);
+      } catch (e: any) {
+        console.warn("Tabela 'activities' falhou:", e.message);
       }
-      setNotification({ message: "Dados importados com sucesso!", type: 'success' });
-    } catch (error) {
-      console.error("Error importing data:", error);
-      setNotification({ message: "Erro ao importar dados.", type: 'error' });
+
+      setExtinguishers(MOCK_EXTINGUISHERS);
+      setActivities(MOCK_ACTIVITIES);
+      setDbStatus('connected');
+      setNotification({ message: "✅ BANCO SINCRONIZADO COM SUCESSO!", type: 'success' });
+    } catch (error: any) {
+      console.error("Full reset error:", error);
+      setNotification({ 
+        message: error.message || "Erro crítico de conexão.", 
+        type: 'error' 
+      });
+    } finally {
+      setTimeout(() => setNotification(null), 8000);
     }
-    
-    setTimeout(() => setNotification(null), 3000);
   };
 
   const handleDeleteInspection = async (extinguisherId: string, inspectionId: string) => {
@@ -530,6 +989,19 @@ export default function App() {
       const latest = updatedInspections[0];
       const hasIssues = Object.values(latest.checklist).some(val => val === false);
       newStatus = hasIssues ? 'Manutenção' : 'Seguro';
+    }
+
+    // Update locally
+    setExtinguishers(prev => prev.map(e => e.id === extinguisherId ? {
+      ...e,
+      inspections: updatedInspections,
+      status: newStatus
+    } : e));
+
+    if (!supabase || isGuest) {
+      setNotification({ message: "Inspeção excluída localmente!", type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
     }
 
     try {
@@ -548,7 +1020,7 @@ export default function App() {
       setNotification({ message: "Inspeção excluída com sucesso!", type: 'success' });
     } catch (error) {
       console.error("Error deleting inspection:", error);
-      setNotification({ message: "Erro ao excluir inspeção.", type: 'error' });
+      setNotification({ message: "Erro ao sincronizar exclusão.", type: 'error' });
     }
     setTimeout(() => setNotification(null), 3000);
   };
@@ -649,6 +1121,73 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleAddResponsible = async (resp: Omit<Responsible, 'id' | 'created_at'>) => {
+    const tempId = Math.random().toString(36).substr(2, 9);
+    const fullResp = { ...resp, id: tempId, created_at: new Date().toISOString() };
+    
+    // Atualização otimista
+    setResponsibles(prev => [...prev, fullResp]);
+
+    if (!supabase || isGuest) {
+      setNotification({ message: "Responsável adicionado localmente!", type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    try {
+      // Inserir e retornar o objeto criado com o ID real do banco (UUID)
+      const { data, error } = await supabase
+        .from('responsibles')
+        .insert([resp])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        // Substituir o ID temporário pelo ID real do banco
+        // Se o listener já adicionou este item, apenas removemos o temporário
+        setResponsibles(prev => {
+          const alreadyExists = prev.find(r => r.id === data.id);
+          if (alreadyExists) {
+            return prev.filter(r => r.id !== tempId);
+          }
+          return prev.map(r => r.id === tempId ? data : r);
+        });
+      }
+      
+      setNotification({ message: "Responsável salvo com sucesso!", type: 'success' });
+    } catch (error: any) {
+      console.error("Error adding responsible:", error);
+      // Se der erro, remover o temporário da lista
+      setResponsibles(prev => prev.filter(r => r.id !== tempId));
+      setNotification({ message: `Erro ao salvar: ${error.message}`, type: 'error' });
+    }
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleDeleteResponsible = async (id: string) => {
+    const originalList = [...responsibles];
+    setResponsibles(prev => prev.filter(r => r.id !== id));
+
+    if (!supabase || isGuest) {
+      setNotification({ message: "Responsável removido da lista!", type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('responsibles').delete().eq('id', id);
+      if (error) throw error;
+      setNotification({ message: "Exclusão sincronizada com sucesso!", type: 'success' });
+    } catch (error) {
+      console.error("Error deleting responsible:", error);
+      setResponsibles(originalList);
+      setNotification({ message: "Erro ao sincronizar exclusão.", type: 'error' });
+    }
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const renderView = () => {
     if (!user && !isGuest && currentView !== 'settings') return (
       <LoginScreen 
@@ -701,10 +1240,16 @@ export default function App() {
           onShowQR={setShowQrModal}
         />
       );
-      case 'map': return <MapView extinguishers={extinguishers} onInspect={handleStartInspection} setNotification={setNotification} />;
+      case 'map': return <MapView extinguishers={extinguishers} onInspect={handleStartInspection} setNotification={setNotification} setEditingExtinguisher={setEditingExtinguisher} />;
       case 'reports': return <ReportsView extinguishers={extinguishers} responsibles={responsibles} />;
-      case 'responsible': return <ResponsibleView responsibles={responsibles} />;
-      case 'settings': return <SettingsView onMagicLink={generateMagicLink} onBack={(!user && !isGuest) ? () => setCurrentView('dashboard') : undefined} />;
+      case 'responsible': return (
+        <ResponsibleView 
+          responsibles={responsibles} 
+          onAdd={handleAddResponsible}
+          onDelete={handleDeleteResponsible}
+        />
+      );
+      case 'settings': return <SettingsView dbStatus={dbStatus} onMagicLink={generateMagicLink} onImportMockData={handleImportMockData} onBack={(!user && !isGuest) ? () => setCurrentView('dashboard') : undefined} />;
       default: return <DashboardView extinguishers={extinguishers} activities={activities} setCurrentView={setCurrentView} onImportMockData={handleImportMockData} />;
     }
   };
@@ -746,9 +1291,12 @@ export default function App() {
       )}
 
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 bg-white backdrop-blur-md border-b border-primary-border px-4 h-16 flex items-center justify-between shadow-sm no-print">
+      <header className="sticky top-0 z-[60] bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 h-16 flex items-center justify-between shadow-sm no-print">
         <div className="flex items-center gap-3">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors text-primary">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-primary active:scale-95"
+          >
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-3">
@@ -858,7 +1406,111 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Edit Modal */}
+      {/* Sidebar Drawer */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] no-print"
+            />
+            <motion.aside 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-72 bg-white z-[120] shadow-2xl flex flex-col no-print"
+            >
+              <div className="p-6 border-b border-gray-50 flex items-center justify-between bg-primary text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg">
+                    <img src={CEASA_LOGO_URL} alt="Logo" className="w-full h-full object-contain" />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-sm uppercase tracking-wider">Menu Principal</h2>
+                    <p className="text-[10px] opacity-80 font-bold uppercase">Gestão de Segurança</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/10 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <SidebarItem 
+                  icon={<LayoutDashboard size={20} />} 
+                  label="Painel de Controle" 
+                  active={currentView === 'dashboard'} 
+                  onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }} 
+                />
+                <SidebarItem 
+                  icon={<ClipboardList size={20} />} 
+                  label="Inventário Geral" 
+                  active={currentView === 'inventory'} 
+                  onClick={() => { setCurrentView('inventory'); setIsSidebarOpen(false); }} 
+                />
+                <SidebarItem 
+                  icon={<ShieldCheck size={20} />} 
+                  label="Rotina de Inspeção" 
+                  active={currentView === 'inspect_list'} 
+                  onClick={() => { setCurrentView('inspect_list'); setIsSidebarOpen(false); }} 
+                />
+                <SidebarItem 
+                  icon={<MapIcon size={20} />} 
+                  label="Mapa de Ativos" 
+                  active={currentView === 'map'} 
+                  onClick={() => { setCurrentView('map'); setIsSidebarOpen(false); }} 
+                />
+                <div className="my-4 border-t border-gray-100 pt-4 px-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ferramentas e Gestão</span>
+                </div>
+                <SidebarItem 
+                  icon={<FileText size={20} />} 
+                  label="Relatórios e PDFs" 
+                  active={currentView === 'reports'} 
+                  onClick={() => { setCurrentView('reports'); setIsSidebarOpen(false); }} 
+                />
+                <SidebarItem 
+                  icon={<Users size={20} />} 
+                  label="Equipe e Responsáveis" 
+                  active={currentView === 'responsible'} 
+                  onClick={() => { setCurrentView('responsible'); setIsSidebarOpen(false); }} 
+                />
+                <SidebarItem 
+                  icon={<UserCog size={20} />} 
+                  label="Configurações" 
+                  active={currentView === 'settings'} 
+                  onClick={() => { setCurrentView('settings'); setIsSidebarOpen(false); }} 
+                />
+              </div>
+
+              <div className="p-4 border-t border-gray-50 bg-gray-50">
+                <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 mb-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <UserCog size={20} />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-[10px] font-black uppercase text-gray-400">Operador Atual</p>
+                    <p className="text-xs font-bold text-gray-900 truncate">{user?.email || 'Convidado'}</p>
+                  </div>
+                </div>
+                {user && (
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-colors"
+                  >
+                    <LogOut size={16} />
+                    Finalizar Sessão
+                  </button>
+                )}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {editingExtinguisher && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
@@ -890,10 +1542,29 @@ export default function App() {
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold"
                       value={editingExtinguisher.mapId || ''}
                       onChange={(e) => setEditingExtinguisher({...editingExtinguisher, mapId: e.target.value})}
+                      required
                     >
-                      <option value="">Nenhuma (Não aparece no mapa)</option>
-                      {MAP_POSITIONS.map(pos => (
-                        <option key={pos} value={pos}>{pos}</option>
+                      <option value="" disabled>Escolha uma posição no mapa</option>
+                      {Object.entries({
+                        'ADM / CASA CIVIL / ÓRGÃOS': ['EXT-01', 'EXT-02', 'EXT-03', 'EXT-04', 'EXT-05', 'EXT-06', 'EXT-07', 'EXT-08'],
+                        'DIREITO': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 9).toString().padStart(2, '0')}`),
+                        'CENTRAL ESQUERDO': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 19).toString().padStart(2, '0')}`),
+                        'CENTRAL DIREITO': Array.from({ length: 13 }, (_, i) => `EXT-${(i + 32).toString().padStart(2, '0')}`),
+                        'ESQUERDO': Array.from({ length: 9 }, (_, i) => `EXT-${(i + 45).toString().padStart(2, '0')}`),
+                        'CENTRAL DE GÁS': ['EXT-222', 'EXT-201'],
+                        'OUTROS (GUARITAS/ACI)': ['EXT-29', 'EXT-30', 'EXT-31', 'EXT-100', 'ACI-02'],
+                        'DEPÓSITO (RESERVA)': ['EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4']
+                      }).map(([group, ids]) => (
+                        <optgroup key={group} label={group}>
+                          {ids.map(pos => {
+                            const isOccupied = extinguishers.some(e => (e.mapId === pos || (e.code === pos && !e.mapId)) && e.id !== editingExtinguisher.id);
+                            return (
+                              <option key={pos} value={pos}>
+                                {pos} {isOccupied ? '(OCUPADO)' : ''}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -922,6 +1593,7 @@ export default function App() {
                       <option>Central Esquerdo</option>
                       <option>Central Direito</option>
                       <option>Direito</option>
+                      <option>CENTRAL DE GÁS</option>
                       <option>ADM</option>
                       <option>ADAPAR</option>
                       <option>CASA CIVIL</option>
@@ -929,6 +1601,7 @@ export default function App() {
                       <option>GUARITA J.K</option>
                       <option>GUARITA DUQUE</option>
                       <option>ACI-MAPA</option>
+                      <option>DEPÓSITO</option>
                     </select>
                   </div>
                   <div>
@@ -957,14 +1630,14 @@ export default function App() {
               <div className="p-6 bg-gray-50 flex gap-3">
                 <button 
                   onClick={() => handleUpdateExtinguisher(editingExtinguisher)}
-                  disabled={isUpdating}
-                  className="flex-1 bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-[0_8px_0_rgb(21,128,61)] hover:shadow-[0_4px_0_rgb(21,128,61)] hover:translate-y-1 active:shadow-none active:translate-y-2 transition-all flex items-center justify-center gap-3"
                 >
-                  {isUpdating ? 'Salvando...' : 'Salvar Alterações'}
+                  <CheckCircle2 size={24} />
+                  SALVAR ALTERAÇÕES
                 </button>
                 <button 
                   onClick={() => setEditingExtinguisher(null)}
-                  className="px-8 bg-white text-gray-500 border border-gray-200 py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-gray-100 transition-all"
+                  className="px-8 bg-white text-gray-500 border border-gray-200 py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-gray-100 transition-all text-sm"
                 >
                   Cancelar
                 </button>
@@ -1052,68 +1725,90 @@ export default function App() {
                 </div>
               </div>
 
-              <button 
-                onClick={handlePrintQRCode}
-                className="w-full mt-8 bg-secondary text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2"
-              >
-                <Printer size={18} />
-                Gerar Etiqueta PDF
-              </button>
+              <div className="grid grid-cols-2 gap-3 w-full mt-8">
+                <button 
+                  onClick={() => {
+                    const url = `${window.location.origin}${window.location.pathname}?code=${encodeURIComponent(showQrModal.code)}`;
+                    navigator.clipboard.writeText(url);
+                    setNotification({ message: 'Link de inspeção copiado!', type: 'success' });
+                  }}
+                  className="bg-primary/5 text-primary py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-primary/10 transition-all flex flex-col items-center justify-center gap-1 border border-primary/10"
+                >
+                  <Link size={18} />
+                  Copiar Link
+                </button>
+                <button 
+                  onClick={handlePrintQRCode}
+                  className="bg-secondary text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:brightness-110 transition-all flex flex-col items-center justify-center gap-1"
+                >
+                  <Printer size={18} />
+                  Gerar PDF
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-20 px-2 flex justify-around items-center shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-50 no-print overflow-x-auto">
-        <NavButton 
-          active={currentView === 'dashboard'} 
-          onClick={() => setCurrentView('dashboard')} 
-          icon={<LayoutDashboard size={18} />} 
-          label="Painel" 
-        />
-        <NavButton 
-          active={currentView === 'inventory'} 
-          onClick={() => setCurrentView('inventory')} 
-          icon={<ClipboardList size={18} />} 
-          label="Inventário" 
-        />
-        <NavButton 
-          active={currentView === 'inspect_list'} 
-          onClick={() => setCurrentView('inspect_list')} 
-          icon={<ShieldCheck size={18} />} 
-          label="Inspeção" 
-        />
-        <NavButton 
-          active={currentView === 'map'} 
-          onClick={() => setCurrentView('map')} 
-          icon={<MapIcon size={18} />} 
-          label="Mapa" 
-        />
-        <NavButton 
-          active={currentView === 'reports'} 
-          onClick={() => setCurrentView('reports')} 
-          icon={<FileText size={18} />} 
-          label="Relatórios" 
-        />
-        <NavButton 
-          active={currentView === 'responsible'} 
-          onClick={() => setCurrentView('responsible')} 
-          icon={<Users size={18} />} 
-          label="Responsáveis" 
-        />
-        <NavButton 
-          active={currentView === 'settings'} 
-          onClick={() => setCurrentView('settings')} 
-          icon={<UserCog size={18} />} 
-          label="Ajustes" 
-        />
-        <NavButton 
-          active={currentView === 'new'} 
-          onClick={() => setCurrentView('new')} 
-          icon={<PlusCircle size={18} />} 
-          label="Novo" 
-        />
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 h-20 flex justify-center items-center shadow-[0_-10px_40px_rgba(0,0,0,0.06)] z-[100] no-print">
+        <div className="flex w-full items-center justify-between max-w-2xl mx-auto h-full px-2 gap-1 overflow-x-auto no-scrollbar">
+          <NavButton 
+            id="dashboard"
+            active={currentView === 'dashboard'} 
+            onClick={() => setCurrentView('dashboard')} 
+            icon={<LayoutDashboard />} 
+            label="Home" 
+          />
+          <NavButton 
+            id="inventory"
+            active={currentView === 'inventory'} 
+            onClick={() => setCurrentView('inventory')} 
+            icon={<ClipboardList />} 
+            label="Estoque" 
+          />
+          <NavButton 
+            id="inspect"
+            active={currentView === 'inspect_list'} 
+            onClick={() => setCurrentView('inspect_list')} 
+            icon={<ShieldCheck />} 
+            label="Inspec." 
+          />
+          
+          {/* Specialized Action Button for "Novo" */}
+          <div className="px-2">
+            <button 
+              onClick={() => setCurrentView('new')}
+              className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl shadow-xl transition-all duration-500 transform ${currentView === 'new' ? 'bg-secondary text-white scale-110 shadow-secondary/40' : 'bg-primary text-white hover:scale-105 active:scale-95 shadow-primary/30'}`}
+              id="fab-novo"
+            >
+              <PlusCircle size={28} strokeWidth={2.5} />
+              <span className="text-[7px] font-black uppercase tracking-widest mt-1">Novo</span>
+            </button>
+          </div>
+
+          <NavButton 
+            id="map"
+            active={currentView === 'map'} 
+            onClick={() => setCurrentView('map')} 
+            icon={<MapIcon />} 
+            label="Mapa" 
+          />
+          <NavButton 
+            id="reports"
+            active={currentView === 'reports'} 
+            onClick={() => setCurrentView('reports')} 
+            icon={<FileText />} 
+            label="Relat." 
+          />
+          <NavButton 
+            id="settings"
+            active={currentView === 'settings'} 
+            onClick={() => setCurrentView('settings')} 
+            icon={<UserCog />} 
+            label="Ajustes" 
+          />
+        </div>
       </nav>
 
       {/* Floating Action Button for Scan */}
@@ -1126,14 +1821,45 @@ export default function App() {
   );
 }
 
-function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-1 transition-all duration-200 ${active ? 'text-secondary bg-secondary-light px-4 py-1 rounded-xl' : 'text-gray-500'}`}
+      className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${
+        active ? 'bg-primary text-white shadow-lg shadow-primary/20 translate-x-2' : 'text-gray-500 hover:bg-gray-50'
+      }`}
     >
-      {icon}
-      <span className="text-[10px] font-bold uppercase tracking-tight">{label}</span>
+      <div className={`${active ? 'text-white' : 'text-gray-400'}`}>
+        {icon}
+      </div>
+      <span className="font-bold text-sm">{label}</span>
+      {active && <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
+    </button>
+  );
+}
+function NavButton({ active, onClick, icon, label, id }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, id: string }) {
+  return (
+    <button 
+      onClick={onClick}
+      className="relative flex flex-col items-center justify-center flex-1 h-full py-1 min-w-[50px] transition-all duration-300"
+      id={`nav-btn-${id}`}
+    >
+      <div className={`relative z-10 flex flex-col items-center justify-center gap-1 transition-all duration-300 ${active ? 'text-secondary translate-y-[-2px]' : 'text-gray-400 hover:text-gray-600'}`}>
+        <div className={`transition-all duration-300 flex items-center justify-center ${active ? 'bg-secondary/10 w-8 h-8 rounded-xl' : 'w-8 h-8'}`}>
+          {React.cloneElement(icon as React.ReactElement, { size: active ? 20 : 18, strokeWidth: active ? 2.5 : 2 })}
+        </div>
+        <span className={`text-[7.5px] font-black uppercase tracking-widest transition-all duration-300 whitespace-nowrap overflow-hidden ${active ? 'opacity-100 max-w-full' : 'opacity-70 max-w-[0px]'}`}>
+          {label}
+        </span>
+      </div>
+      
+      {active && (
+        <motion.div 
+          layoutId="activeNavPill"
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-secondary rounded-full"
+          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+        />
+      )}
     </button>
   );
 }
@@ -1225,10 +1951,14 @@ function MonthlyInspectionView({ extinguishers, onInspect, onDeleteInspection, o
                     </button>
 
                     {isDone && (
-                      <div className="flex items-center gap-2 text-secondary font-bold text-xs uppercase mr-2">
+                      <button 
+                        onClick={() => onInspect(ext)}
+                        className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-green-200 transition-all shadow-sm group"
+                      >
                         <CheckCircle2 size={16} />
                         Concluído
-                      </div>
+                        <Pencil size={12} className="ml-1 opacity-50 group-hover:opacity-100" />
+                      </button>
                     )}
                     
                     {!isDone && (
@@ -1504,16 +2234,19 @@ function InventoryView({ extinguishers, onStatusChange, onDelete, onEdit, onInsp
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState('Todos');
+  const [selectedType, setSelectedType] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filters = ['Todos', 'Esquerdo', 'Central Esquerdo', 'Central Direito', 'Direito', 'ADM', 'ADAPAR', 'CASA CIVIL', 'POÇO', 'GUARITA J.K', 'GUARITA DUQUE', 'ACI-MAPA'];
+  const filters = ['Todos', 'Esquerdo', 'Central Esquerdo', 'Central Direito', 'Direito', 'CENTRAL DE GÁS', 'ADM', 'ADAPAR', 'CASA CIVIL', 'POÇO', 'GUARITA J.K', 'GUARITA DUQUE', 'ACI-MAPA', 'DEPÓSITO'];
+  const types = ['Todos', 'Pó Químico (ABC)', 'Pó Químico (BC)', 'CO2', 'Água (H2O)'];
 
   const filteredExtinguishers = extinguishers.filter(ext => {
     const matchesFilter = selectedFilter === 'Todos' || ext.location === selectedFilter;
+    const matchesType = selectedType === 'Todos' || ext.type === selectedType;
     const matchesSearch = ext.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          ext.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          ext.subLocation.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesType && matchesSearch;
   }).sort((a, b) => {
     const numA = parseInt(a.code.replace(/\D/g, '')) || 0;
     const numB = parseInt(b.code.replace(/\D/g, '')) || 0;
@@ -1536,21 +2269,76 @@ function InventoryView({ extinguishers, onStatusChange, onDelete, onEdit, onInsp
             />
           </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {filters.map((filter) => (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Localização:</span>
+            {filters.map((filter) => (
+              <button 
+                key={filter} 
+                onClick={() => {
+                  setSelectedFilter(filter);
+                  setSelectedType('Todos'); // Reset type when location changes for better UX
+                }}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${selectedFilter === filter ? 'bg-primary text-white shadow-md scale-105' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Tipo:</span>
+            {types.map((t) => (
+              <button 
+                key={t} 
+                onClick={() => {
+                  setSelectedType(t);
+                  // Keep location filter if user specifically wants to browse by type within location, 
+                  // but maybe they prefer seeing all of that type? 
+                  // Let's reset location to 'Todos' if they click a type specifically
+                  setSelectedFilter('Todos');
+                }}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${selectedType === t ? 'bg-secondary text-white shadow-md scale-105' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          
+          {(selectedFilter !== 'Todos' || selectedType !== 'Todos' || searchQuery !== '') && (
             <button 
-              key={filter} 
-              onClick={() => setSelectedFilter(filter)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all ${selectedFilter === filter ? 'bg-primary text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              onClick={() => {
+                setSelectedFilter('Todos');
+                setSelectedType('Todos');
+                setSearchQuery('');
+              }}
+              className="mt-2 text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1 hover:underline"
             >
-              {filter}
+              <RotateCcw size={12} />
+              Limpar Filtros
             </button>
-          ))}
+          )}
         </div>
       </div>
 
       <div className="space-y-4">
-        {filteredExtinguishers.map((ext) => (
+        {filteredExtinguishers.length === 0 ? (
+          <div className="bg-white p-12 rounded-2xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+            <Search className="text-gray-200 mb-4" size={48} />
+            <p className="text-gray-500 font-bold">Nenhum extintor encontrado com estes filtros.</p>
+            <button 
+              onClick={() => {
+                setSelectedFilter('Todos');
+                setSelectedType('Todos');
+                setSearchQuery('');
+              }}
+              className="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-black text-[10px] uppercase tracking-widest"
+            >
+              Ver todos os extintores
+            </button>
+          </div>
+        ) : (
+          filteredExtinguishers.map((ext) => (
           <div key={ext.id} className="bg-white rounded-2xl border-b-2 border-gray-100 overflow-hidden transition-all hover:shadow-md">
             <div 
               className="p-5 flex flex-col md:flex-row items-start md:items-center gap-6 cursor-pointer group"
@@ -1736,10 +2524,11 @@ function InventoryView({ extinguishers, onStatusChange, onDelete, onEdit, onInsp
               )}
             </AnimatePresence>
           </div>
-        ))}
-      </div>
+        ))
+      )}
     </div>
-  );
+  </div>
+);
 }
 
 function CheckBadge({ label, active }: { label: string, active: boolean }) {
@@ -1759,7 +2548,13 @@ function InspectView({ extinguisher, onCancel, onSave, onShowQR }: {
   onSave: (checklist: any, notes: string, lastRecharge?: string, nextRecharge?: string, inspectionDate?: string, inspectionTime?: string, inspectionMonth?: string, photos?: string[]) => void, 
   onShowQR: (ext: Extinguisher) => void 
 }) {
-  const [checklist, setChecklist] = useState<Record<string, boolean | 'N/A'>>({
+  const now = new Date();
+  const currentMonthStr = now.toLocaleString('pt-BR', { month: 'long' }).toUpperCase();
+  
+  // Buscar se já existe inspeção para este mês
+  const existingMonthInsp = extinguisher.inspections.find(i => i.month === currentMonthStr);
+
+  const [checklist, setChecklist] = useState<Record<string, boolean | 'N/A'>>(existingMonthInsp?.checklist || {
     manometer: extinguisher?.type?.includes('CO2') ? 'N/A' : true,
     seal: true,
     damage: true,
@@ -1770,16 +2565,16 @@ function InspectView({ extinguisher, onCancel, onSave, onShowQR }: {
     diffuser: extinguisher?.type?.includes('CO2') ? true : 'N/A',
     hose: true
   });
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(existingMonthInsp?.notes || '');
   const [lastRecharge, setLastRecharge] = useState(extinguisher.lastRechargeDate || '');
   const [nextRecharge, setNextRecharge] = useState(extinguisher.expiryDate || '');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>(existingMonthInsp?.photos || []);
   const [isUploading, setIsUploading] = useState(false);
   
-  const now = new Date();
-  const [inspectionMonth, setInspectionMonth] = useState(now.toLocaleString('pt-BR', { month: 'long' }).toUpperCase());
-  const [inspectionDate, setInspectionDate] = useState(now.toISOString().split('T')[0]);
-  const [inspectionTime, setInspectionTime] = useState(now.toTimeString().slice(0, 5));
+  const [inspectionMonth, setInspectionMonth] = useState(existingMonthInsp?.month || currentMonthStr);
+  const [inspectionDate, setInspectionDate] = useState(existingMonthInsp?.date || now.toISOString().split('T')[0]);
+  const [inspectionTime, setInspectionTime] = useState(existingMonthInsp?.time || now.toTimeString().slice(0, 5));
+
 
   const months = [
     'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
@@ -1994,9 +2789,13 @@ function NewItemView({ extinguishers, onDelete, onEdit, onStatusChange, onInspec
     e.preventDefault();
     if (!code) return;
 
+    // Se não houver mapId selecionado explicitamente mas o código começar com EXT-
+    // vamos assumir que o código pode ser o próprio mapId se estiver vago
+    const finalMapId = mapId || (code.startsWith('EXT-') ? code : undefined);
+
     onAdd({
       code,
-      mapId: mapId || undefined,
+      mapId: finalMapId,
       type,
       capacity: `${capacity}kg`,
       location: selectedPavilion,
@@ -2005,6 +2804,31 @@ function NewItemView({ extinguishers, onDelete, onEdit, onStatusChange, onInspec
       expiryDate: expiry || 'N/A'
     });
   };
+
+  // Lógica para obter IDs sugeridos baseados na localização
+  const getSuggestedMapIds = () => {
+    const ranges: Record<string, string[]> = {
+      'ADM': ['EXT-01', 'EXT-02'],
+      'ADAPAR': ['EXT-03'],
+      'IDR': ['EXT-04'],
+      'CASA CIVIL': ['EXT-05', 'EXT-06'],
+      'POÇO': ['EXT-07'],
+      'GUARITA J.K': ['EXT-08'],
+      'DEPÓSITO': ['EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4', 'EXT-R5'],
+      'Direito': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 9).toString().padStart(2, '0')}`),
+      'Central Esquerdo': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 19).toString().padStart(2, '0')}`),
+      'Central Direito': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 32).toString().padStart(2, '0')}`),
+      'Esquerdo': Array.from({ length: 12 }, (_, i) => `EXT-${(i + 42).toString().padStart(2, '0')}`),
+      'GUARITA DUQUE': ['EXT-29', 'EXT-30'],
+      'ACI-MAPA': ['EXT-31', 'EXT-100', 'ACI-02'],
+      'CENTRAL DE GÁS': ['EXT-222', 'EXT-201']
+    };
+
+    return ranges[selectedPavilion] || [];
+  };
+
+  const suggestedIds = getSuggestedMapIds();
+  const occupiedIds = extinguishers.map(e => e.mapId || e.code);
 
   return (
     <div className="space-y-12">
@@ -2038,16 +2862,46 @@ function NewItemView({ extinguishers, onDelete, onEdit, onStatusChange, onInspec
 
             <div className="bg-white p-6 rounded-xl shadow-sm border-b-2 border-secondary-border">
               <label className="block text-sm font-bold text-secondary uppercase tracking-widest mb-4">Posição no Mapa</label>
-              <select 
-                className="w-full py-3 bg-background border-none rounded-xl focus:ring-2 focus:ring-secondary font-semibold appearance-none px-4"
-                value={mapId}
-                onChange={(e) => setMapId(e.target.value)}
-              >
-                <option value="">Nenhuma (Não aparece no mapa)</option>
-                {MAP_POSITIONS.map(pos => (
-                  <option key={pos} value={pos}>{pos}</option>
-                ))}
-              </select>
+              <div className="space-y-3">
+                <select 
+                  className="w-full py-3 bg-background border-none rounded-xl focus:ring-2 focus:ring-secondary font-semibold appearance-none px-4"
+                  value={mapId}
+                  onChange={(e) => setMapId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Selecione uma posição (Obrigatório)</option>
+                  {Object.entries({
+                    'ADM / CASA CIVIL / ÓRGÃOS': ['EXT-01', 'EXT-02', 'EXT-03', 'EXT-04', 'EXT-05', 'EXT-06', 'EXT-07', 'EXT-08'],
+                    'DIREITO': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 9).toString().padStart(2, '0')}`),
+                    'CENTRAL ESQUERDO': Array.from({ length: 10 }, (_, i) => `EXT-${(i + 19).toString().padStart(2, '0')}`),
+                    'CENTRAL DIREITO': Array.from({ length: 13 }, (_, i) => `EXT-${(i + 32).toString().padStart(2, '0')}`),
+                    'ESQUERDO': Array.from({ length: 9 }, (_, i) => `EXT-${(i + 45).toString().padStart(2, '0')}`),
+                    'CENTRAL DE GÁS': ['EXT-222', 'EXT-201'],
+                    'OUTROS (GUARITAS/ACI)': ['EXT-29', 'EXT-30', 'EXT-31', 'EXT-100', 'ACI-02'],
+                    'DEPÓSITO (RESERVA)': ['EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4']
+                  }).map(([group, ids]) => (
+                    <optgroup key={group} label={group}>
+                      {ids.map(pos => {
+                        const isOccupied = extinguishers.some(e => (e.mapId === pos || (e.code === pos && !e.mapId)));
+                        return (
+                          <option key={pos} value={pos}>
+                            {pos} {isOccupied ? '(OCUPADO)' : ''}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="text"
+                    placeholder="Ou digite um ID personalizado"
+                    className="flex-1 py-2 px-3 bg-background border-none rounded-lg text-[10px] font-bold"
+                    value={mapId}
+                    onChange={(e) => setMapId(e.target.value.toUpperCase())}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2091,7 +2945,7 @@ function NewItemView({ extinguishers, onDelete, onEdit, onStatusChange, onInspec
                   <div>
                     <span className="text-[10px] text-gray-400 font-bold uppercase">Pavilhão (Seleção)</span>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
-                      {['Direito', 'Central Esquerdo', 'Central Direito', 'Esquerdo', 'ADM', 'ADAPAR', 'CASA CIVIL', 'POÇO', 'GUARITA J.K', 'GUARITA DUQUE', 'ACI-MAPA'].map(p => (
+                      {['Esquerdo', 'Central Esquerdo', 'Central Direito', 'Direito', 'CENTRAL DE GÁS', 'ADM', 'ADAPAR', 'CASA CIVIL', 'POÇO', 'GUARITA J.K', 'GUARITA DUQUE', 'ACI-MAPA', 'DEPÓSITO'].map(p => (
                         <button 
                           key={p} 
                           type="button" 
@@ -2157,7 +3011,7 @@ function NewItemView({ extinguishers, onDelete, onEdit, onStatusChange, onInspec
   );
 }
 
-function MapView({ extinguishers, onInspect, setNotification }: { extinguishers: Extinguisher[], onInspect: (ext: Extinguisher) => void, setNotification: (n: { message: string, type: 'success' | 'error' } | null) => void }) {
+function MapView({ extinguishers, onInspect, setNotification, setEditingExtinguisher }: { extinguishers: Extinguisher[], onInspect: (ext: Extinguisher) => void, setNotification: (n: { message: string, type: 'success' | 'error' } | null) => void, setEditingExtinguisher: (ext: Extinguisher) => void }) {
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const mapRef = React.useRef<HTMLDivElement>(null);
@@ -2199,6 +3053,14 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
     return hasIssue ? 'Manutenção' : 'Seguro';
   };
 
+  const getBoxLabel = (mapId: string) => {
+    const ext = extinguishers.find(e => e.mapId === mapId || (e.code === mapId && !e.mapId));
+    if (ext) {
+      return ext.subLocation || ext.location;
+    }
+    return mapId; // Retorna o ID se não houver nada cadastrado
+  };
+
   const getStatusColor = (mapId: string) => {
     const ext = extinguishers.find(e => (e.mapId || e.code) === mapId);
     if (!ext) return 'bg-gray-50 text-gray-400 border-gray-200';
@@ -2223,7 +3085,7 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: true,
         backgroundColor: '#ffffff',
@@ -2308,7 +3170,7 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
     }
   };
 
-  const MapPoint = ({ mapId, position = 'top' }: { mapId: string, position?: 'top' | 'bottom' }) => {
+  const MapPoint = ({ mapId, position = 'top' }: { mapId: string, position?: 'top' | 'bottom', key?: string }) => {
     const ext = extinguishers.find(e => (e.mapId || e.code) === mapId);
     const isSelected = selectedPoint === mapId;
     const historicalStatus = ext ? getHistoricalStatus(ext) : 'N/A';
@@ -2348,6 +3210,20 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
                 </button>
               </div>
               <h4 className="text-xs font-black text-gray-900 leading-none">{ext.code}</h4>
+              <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
+                <button 
+                  onClick={() => setEditingExtinguisher(ext)}
+                  className="flex-1 bg-primary text-white text-[9px] font-black uppercase py-1.5 rounded-lg hover:brightness-110"
+                >
+                  Editar
+                </button>
+                <button 
+                  onClick={() => onInspect(ext)}
+                  className="flex-1 bg-secondary text-white text-[9px] font-black uppercase py-1.5 rounded-lg hover:brightness-110"
+                >
+                  Inspecionar
+                </button>
+              </div>
               {isHistorical && historicalStatus === 'Vazio' && (
                 <p className="text-[10px] text-red-500 font-bold uppercase mt-1 italic">Vazio no período</p>
               )}
@@ -2484,7 +3360,7 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
         </div>
       </div>
 
-      <div className="bg-white p-4 md:p-10 rounded-3xl shadow-xl border border-gray-100 overflow-x-auto print-map-container relative min-h-[600px]">
+      <div className="bg-white p-4 md:p-10 rounded-3xl shadow-xl border border-gray-100 overflow-x-auto overflow-y-visible print-map-container relative min-h-[600px]">
         {/* Map Legend removed from here */}
 
         {/* Compass Indicator */}
@@ -2514,132 +3390,254 @@ function MapView({ extinguishers, onInspect, setNotification }: { extinguishers:
             </div>
           </div>
 
-          {/* Top Section - ADM, ADAPAR, IDR, CASA CIVIL */}
-          <div className="flex justify-between items-start gap-8 print:gap-4">
-            <div className="flex gap-6 items-stretch print:gap-4">
+          {/* Top Section - DEPÓSITO, ADM, CASA CIVIL, ADAPAR, IDR */}
+          <div className="flex justify-between items-start gap-6 print:gap-4">
+            <div className="flex gap-4 items-stretch print:gap-4">
+              {/* Bloco Depósito (Reservas) */}
+              <div className="w-44 h-40 border-4 border-dashed border-gray-300 bg-white rounded-3xl flex flex-col items-center justify-center relative p-3 shadow-sm">
+                <span className="text-[10px] font-black text-gray-500 uppercase mb-4 text-center tracking-widest leading-none">DEPÓSITO<br/><span className="text-[7px] text-gray-300">(RESERVA)</span></span>
+                <div className="grid grid-cols-2 gap-2 justify-items-center">
+                  {['EXT-R1', 'EXT-R2', 'EXT-R3', 'EXT-R4'].map(mid => (
+                    <MapPoint mapId={mid} key={mid} />
+                  ))}
+                </div>
+              </div>
+
               {/* Bloco ADM e Casa Civil */}
               <div className="flex border-4 border-gray-300 rounded-3xl bg-gray-50 shadow-sm">
-                <div className="w-48 h-40 border-r-4 border-gray-300 flex flex-col items-center justify-center relative p-4">
-                  <span className="text-sm font-black text-gray-500 uppercase mb-6">ADM</span>
-                  <div className="absolute top-3 left-3"><MapPoint mapId="EXT-01" position="bottom" /></div>
-                  <div className="absolute bottom-3 left-3"><MapPoint mapId="EXT-02" /></div>
+                <div className="w-36 h-40 border-r-4 border-gray-300 flex flex-col items-center justify-center relative p-4 gap-2">
+                  <span className="text-[10px] font-black text-gray-500 uppercase mb-3 tracking-widest">ADM</span>
+                  <div className="flex gap-3 justify-center">
+                    <MapPoint mapId="EXT-01" />
+                    <MapPoint mapId="EXT-02" />
+                  </div>
                 </div>
-                <div className="w-40 h-40 flex flex-col items-center justify-center relative p-4 bg-white">
-                  <span className="text-xs font-black text-gray-500 uppercase text-center leading-tight">CASA CIVIL<br/>COZINHA</span>
-                  <div className="absolute top-3 right-3"><MapPoint mapId="EXT-06" position="bottom" /></div>
-                  <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-10">
-                    <div className="flex flex-col items-center">
-                      <MapPoint mapId="EXT-05" />
-                      <span className="text-[9px] font-black text-primary uppercase mt-1">EXTERNO</span>
-                    </div>
+                <div className="w-44 h-40 flex flex-col items-center justify-center relative p-4 bg-white rounded-r-[26px]">
+                  <span className="text-[10px] font-black text-gray-500 uppercase text-center leading-tight mb-3 tracking-widest">CASA CIVIL<br/>COZINHA</span>
+                  <div className="flex gap-3 justify-center mb-2">
+                    <MapPoint mapId="EXT-06" />
+                  </div>
+                  <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                    <MapPoint mapId="EXT-05" />
+                    <span className="text-[8px] font-black text-red-600 uppercase tracking-tighter mt-1 bg-white/80 px-1 rounded shadow-sm">EXTERNO</span>
                   </div>
                 </div>
               </div>
 
               {/* Bloco ADAPAR e IDR */}
-              <div className="flex flex-col border-4 border-gray-300 rounded-3xl bg-gray-50 w-56 h-40 shadow-sm">
-                <div className="flex-1 border-b-4 border-gray-300 relative p-4 flex items-center justify-center">
-                  <span className="text-sm font-black text-gray-500 uppercase">ADAPAR</span>
-                  <div className="absolute top-3 right-3"><MapPoint mapId="EXT-03" position="bottom" /></div>
+              <div className="flex flex-col border-4 border-gray-300 rounded-3xl bg-gray-50 w-44 h-40 shadow-sm overflow-hidden">
+                <div className="flex-1 border-b-4 border-gray-300 relative p-3 flex flex-col items-center justify-center bg-white">
+                  <span className="text-[10px] font-black text-gray-500 uppercase mb-1 tracking-widest">ADAPAR</span>
+                  <MapPoint mapId="EXT-03" />
                 </div>
-                <div className="flex-1 relative p-4 flex items-center justify-center bg-white">
-                  <span className="text-sm font-black text-gray-500 uppercase">IDR</span>
-                  <div className="absolute bottom-3 right-3"><MapPoint mapId="EXT-04" /></div>
+                <div className="flex-1 relative p-3 flex flex-col items-center justify-center bg-white">
+                  <span className="text-[10px] font-black text-gray-500 uppercase mb-1 tracking-widest">IDR</span>
+                  <MapPoint mapId="EXT-04" />
                 </div>
               </div>
             </div>
 
-            {/* Bloco Poço e Guarita */}
-            <div className="flex gap-12 print:gap-6">
-              <div className="w-40 h-40 border-4 border-primary-border bg-primary-light rounded-3xl flex flex-col items-center justify-center relative p-4 shadow-sm">
-                <span className="text-sm font-black text-primary uppercase">POÇO</span>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2"><MapPoint mapId="EXT-07" position="bottom" /></div>
+            <div className="flex gap-6 items-stretch print:gap-4">
+              {/* Bloco POÇO */}
+              <div className="w-36 h-40 border-4 border-red-50 bg-red-50/20 rounded-3xl flex flex-col items-center justify-center relative p-4 shadow-sm">
+                <span className="text-[10px] font-black text-red-800 uppercase mb-4 tracking-widest">POÇO</span>
+                <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                  <MapPoint mapId="EXT-07" />
+                  <span className="text-[8px] font-black text-red-600 uppercase tracking-tighter mt-1 bg-white/80 px-1 rounded shadow-sm">EXTERNO</span>
+                </div>
               </div>
-              <div className="w-40 h-40 border-4 border-secondary-border bg-secondary-light rounded-3xl flex flex-col items-center justify-center relative p-4 shadow-sm">
-                <span className="text-sm font-black text-secondary uppercase text-center leading-tight">GUARITA<br/>J.K</span>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2"><MapPoint mapId="EXT-08" /></div>
+
+              {/* Bloco GUARITA J.K */}
+              <div className="w-36 h-40 border-4 border-green-50 bg-green-50/20 rounded-3xl flex flex-col items-center justify-center relative p-4 shadow-sm">
+                <span className="text-[10px] font-black text-green-800 uppercase text-center leading-tight mb-4 tracking-widest">GUARITA<br/>J.K</span>
+                <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+                  <MapPoint mapId="EXT-08" />
+                  <span className="text-[8px] font-black text-red-600 uppercase tracking-tighter mt-1 bg-white/80 px-1 rounded shadow-sm">EXTERNO</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Main Pavilions */}
-          <div className="grid grid-cols-3 gap-12 items-start print:grid-cols-1 print:gap-8">
-            {/* Pavilhão Direito */}
+        {/* Main Pavilions */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr_1fr] gap-4 items-start print:grid-cols-[0.8fr_1.4fr_0.8fr] print:gap-3 print:max-w-none">
+          {/* Pavilhão Direito */}
             <div className="space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center text-primary border-2 border-primary-border">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center text-primary border-2 border-primary-border shrink-0">
                   <MapIcon size={20} />
                 </div>
-                <h3 className="text-center text-lg font-black uppercase tracking-widest text-primary">Pavilhão Direito</h3>
+                <h3 className="text-center text-lg font-black uppercase tracking-widest text-primary print:text-lg">Pavilhão Direito</h3>
               </div>
-              <div className="border-4 border-primary-border rounded-[40px] p-6 space-y-3 bg-primary-light shadow-inner">
-                {['NIEHUES', 'JAAM', '49', 'MELHORANÇA', 'SÃO MIGUEL', '3 IRMÃOS', 'OLIVEIRA', 'NACO', 'TABAJARA', 'WALKER'].map((box, i) => (
-                  <div key={box} className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border-2 border-gray-200 shadow-sm w-full">
-                    <MapPoint mapId={`EXT-${(i + 9).toString().padStart(2, '0')}`} />
-                    <span className="text-[9px] font-black text-gray-600 uppercase tracking-tight whitespace-nowrap flex-1">{box}</span>
-                  </div>
-                ))}
+              <div className="border-[3px] border-primary-border rounded-[32px] p-3 bg-primary-light shadow-inner relative space-y-2 print:p-2.5 print:space-y-2">
+                {[9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((num) => {
+                  const mid = `EXT-${num.toString().padStart(2, '0')}`;
+                  const label = getBoxLabel(mid);
+                  const isVago = label === mid;
+                  return (
+                    <div key={mid} className={`flex items-center gap-2 bg-white p-2 rounded-xl border-2 shadow-sm w-full border-l-[6px] min-h-[42px] min-w-0 ${isVago ? 'border-gray-200 border-l-primary/30' : 'border-primary-border border-l-primary'}`}>
+                      <MapPoint mapId={mid} />
+                      <span className={`text-[10px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[11px] ${isVago ? 'text-gray-400' : 'text-primary'}`}>
+                        {label === mid ? 'Vago' : label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Pavilhão Central */}
             <div className="space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-secondary-light flex items-center justify-center text-secondary border-2 border-secondary-border">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-secondary-light flex items-center justify-center text-secondary border-2 border-secondary-border shrink-0">
                   <MapIcon size={20} />
                 </div>
-                <h3 className="text-center text-lg font-black uppercase tracking-widest text-secondary">Pavilhão Central</h3>
+                <h3 className="text-center text-lg font-black uppercase tracking-widest text-secondary print:text-lg">Pavilhão Central</h3>
               </div>
-              <div className="grid grid-cols-2 gap-6 border-4 border-secondary-border rounded-[40px] p-6 bg-secondary-light shadow-inner">
-                <div className="space-y-3 pr-3 border-r-2 border-secondary-border">
-                  <span className="text-[10px] font-black text-gray-500 uppercase block text-center mb-4 tracking-widest">Lado Esquerdo</span>
-                  {['COSER', 'COSER', 'COSER', 'VDF', 'CONSTANTINO', 'AQUARELA', 'HUBNER', 'KILANCHÃO', 'OLICAMPO', 'MENDES'].map((box, i) => (
-                    <div key={i} className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border-2 border-gray-200 shadow-sm w-full">
-                      <MapPoint mapId={`EXT-${(i + 19).toString().padStart(2, '0')}`} />
-                      <span className="text-[9px] font-black text-gray-700 uppercase tracking-tight whitespace-nowrap flex-1">{box}</span>
-                    </div>
-                  ))}
+              
+              <div className="border-[3px] border-secondary-border rounded-[32px] p-2 bg-secondary-light shadow-inner relative print:p-2.5">
+                {/* Top Section - Lados e IDs Invertidos conforme solicitação */}
+                <div className="grid grid-cols-2 gap-1.5 mb-4 print:gap-2">
+                  {/* Agora o Lado DIREITO (físico) fica na ESQUERDA da tela e recebe 19-26 */}
+                  <div className="space-y-2 pr-1 border-r border-secondary-border/50">
+                    <span className="text-[9px] font-black text-gray-500 uppercase block text-center mb-1 tracking-widest print:text-[10px]">Lado Direito</span>
+                    {[19, 20, 21, 22, 23, 24, 25, 26].map((num) => {
+                      const mid = `EXT-${num}`;
+                      const label = getBoxLabel(mid);
+                      const isVago = label === mid;
+                      return (
+                        <div key={mid} className={`flex items-center gap-1.5 bg-white p-2 rounded-xl border-2 shadow-sm w-full border-l-[5px] min-h-[42px] min-w-0 ${isVago ? 'border-gray-200 border-l-secondary/30' : 'border-secondary-border border-l-secondary'}`}>
+                          <MapPoint mapId={mid} />
+                          <span className={`text-[9px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[10.5px] ${isVago ? 'text-gray-400' : 'text-secondary'}`}>
+                            {isVago ? 'Vago' : label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Agora o Lado ESQUERDO (físico) fica na DIREITA da tela e recebe 32-39 */}
+                  <div className="space-y-2 pl-1">
+                    <span className="text-[9px] font-black text-gray-500 uppercase block text-center mb-1 tracking-widest print:text-[10px]">Lado Esquerdo</span>
+                    {[32, 33, 34, 35, 36, 37, 38, 39].map((num) => {
+                      const mid = `EXT-${num}`;
+                      const label = getBoxLabel(mid);
+                      const isVago = label === mid;
+                      return (
+                        <div key={mid} className={`flex items-center gap-1.5 bg-white p-2 rounded-xl border-2 shadow-sm w-full border-r-[5px] min-h-[42px] min-w-0 ${isVago ? 'border-gray-200 border-r-secondary/30' : 'border-secondary-border border-r-secondary'}`}>
+                          <MapPoint mapId={mid} />
+                          <span className={`text-[9px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[10.5px] ${isVago ? 'text-gray-400' : 'text-secondary'}`}>
+                            {isVago ? 'Vago' : label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="space-y-3 pl-3">
-                  <span className="text-[10px] font-black text-gray-500 uppercase block text-center mb-4 tracking-widest">Lado Direito</span>
-                  {['COLORADO', 'ADRIANA', 'ESTRELA', 'CONSTANTINO', 'CONSTANTINO', 'AQUARELA', 'HUBNER', 'KILANCHÃO', 'BERGAMINI', 'BERGAMINI'].map((box, i) => (
-                    <div key={i} className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border-2 border-gray-200 shadow-sm w-full">
-                      <MapPoint mapId={`EXT-${(i + 32).toString().padStart(2, '0')}`} />
-                      <span className="text-[9px] font-black text-gray-700 uppercase tracking-tight whitespace-nowrap flex-1">{box}</span>
+
+                {/* Corridor Section - Design Simétrico alinhado às colunas */}
+                <div className="my-4 relative border-y-2 border-dashed border-secondary-border/20 py-4 px-2 bg-gray-50/20 rounded-2xl print:bg-white print:my-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Lado Esquerdo - Label Central de Gás */}
+                    <div className="flex flex-col justify-center">
+                      <div className="bg-white border-2 border-secondary-border rounded-xl p-3 flex items-center justify-center shadow-sm h-full min-h-[92px]">
+                         <span className="text-[10px] font-black uppercase text-secondary tracking-[0.2em] text-center leading-tight print:text-[12px]">CENTRAL DE<br/>GÁS</span>
+                      </div>
                     </div>
-                  ))}
+
+                    {/* Lado Direito - Extintores Stacked */}
+                    <div className="space-y-2 flex flex-col justify-center">
+                        {['EXT-222', 'EXT-201'].map(mid => {
+                          const label = getBoxLabel(mid);
+                          const isVago = label === mid || label === 'Vago';
+                          return (
+                            <div key={mid} className={`flex items-center gap-2 bg-white p-2 rounded-lg border-2 shadow-sm w-full border-r-[5px] min-h-[38px] min-w-0 ${isVago ? 'border-dashed border-gray-200 border-r-gray-300' : 'border-secondary-border border-r-secondary'}`}>
+                              <MapPoint mapId={mid} />
+                              <span className={`text-[8px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[10px] ${isVago ? 'text-gray-400' : 'text-secondary'}`}>
+                                {isVago ? 'Vago' : label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Section - Lados e IDs invertidos */}
+                <div className="grid grid-cols-2 gap-1.5 mt-4 print:gap-2">
+                  <div className="space-y-2 pr-1 border-r border-secondary-border/50">
+                    {[27, 28].map((num) => {
+                      const mid = `EXT-${num}`;
+                      const label = getBoxLabel(mid);
+                      const isVago = label === mid;
+                      return (
+                        <div key={mid} className={`flex items-center gap-1.5 bg-white p-1.5 rounded-lg border-2 shadow-sm w-full border-l-[5px] min-w-0 ${isVago ? 'border-gray-200 border-l-secondary/30' : 'border-secondary-border border-l-secondary'}`}>
+                          <MapPoint mapId={mid} />
+                          <span className={`text-[9px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[10.5px] ${isVago ? 'text-gray-400' : 'text-secondary'}`}>
+                            {isVago ? 'Vago' : label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="space-y-2 pl-1">
+                    {[40, 41].map((num) => {
+                      const mid = `EXT-${num}`;
+                      const label = getBoxLabel(mid);
+                      const isVago = label === mid;
+                      return (
+                        <div key={mid} className={`flex items-center gap-1.5 bg-white p-1.5 rounded-lg border-2 shadow-sm w-full border-r-[5px] min-w-0 ${isVago ? 'border-gray-200 border-r-secondary/30' : 'border-secondary-border border-r-secondary'}`}>
+                          <MapPoint mapId={mid} />
+                          <span className={`text-[9px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[10.5px] ${isVago ? 'text-gray-400' : 'text-secondary'}`}>
+                            {isVago ? 'Vago' : label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Pavilhão Esquerdo */}
             <div className="space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-tertiary-light flex items-center justify-center text-tertiary border-2 border-tertiary-border">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-tertiary-light flex items-center justify-center text-tertiary border-2 border-tertiary-border shrink-0">
                   <MapIcon size={20} />
                 </div>
-                <h3 className="text-center text-lg font-black uppercase tracking-widest text-tertiary">Pavilhão Esquerdo</h3>
+                <h3 className="text-center text-lg font-black uppercase tracking-widest text-tertiary print:text-lg">Pavilhão Esquerdo</h3>
               </div>
-              <div className="border-4 border-tertiary-border rounded-[40px] p-6 space-y-3 bg-tertiary-light shadow-inner">
-                {['CORUPÁ', 'CORUPÁ', 'CORUPÁ', 'MARAVILHA', 'MARAVILHA', 'CAMILA LAMB', 'FOZ MAR', 'SANTA HELENA', 'CERSUL', 'BANCO DE ALIMENTOS', 'BEIRA RIO'].map((box, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border-2 border-gray-200 shadow-sm w-full">
-                    <MapPoint mapId={`EXT-${(52 - i).toString().padStart(2, '0')}`} />
-                    <span className="text-[9px] font-black text-gray-600 uppercase tracking-tight whitespace-nowrap flex-1">{box}</span>
-                  </div>
-                ))}
+              <div className="border-[3px] border-tertiary-border rounded-[32px] p-3 bg-tertiary-light shadow-inner relative space-y-2 print:p-2.5 print:space-y-2">
+                {[53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42].map((num) => {
+                  const mid = `EXT-${num.toString().padStart(2, '0')}`;
+                  const label = getBoxLabel(mid);
+                  const isVago = label === mid;
+                  return (
+                    <div key={mid} className={`flex items-center gap-2 bg-white p-2 rounded-xl border-2 shadow-sm w-full border-r-[6px] min-h-[42px] min-w-0 ${isVago ? 'border-gray-200 border-r-tertiary/30' : 'border-tertiary-border border-r-tertiary'}`}>
+                      <MapPoint mapId={mid} />
+                      <span className={`text-[10px] font-black uppercase tracking-tighter leading-none flex-1 break-words print:text-[11px] ${isVago ? 'text-gray-400' : 'text-tertiary'}`}>
+                        {label === mid ? 'Vago' : label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* Bottom Section - ACI e Guarita Duque */}
-          <div className="flex justify-around items-end pt-12 print:pt-8">
-            <div className="w-56 h-32 border-4 border-dashed border-gray-300 rounded-3xl flex items-center justify-center relative bg-gray-50 shadow-sm">
-              <span className="text-sm font-black text-gray-500 uppercase leading-tight text-center">GUARITA<br/>DUQUE</span>
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"><MapPoint mapId="EXT-30" /></div>
+        {/* Bottom Section - ACI e Guarita Duque */}
+          <div className="flex justify-around items-end pt-12 print:pt-8 print:flex-col print:items-center print:gap-12">
+            <div className="w-56 h-32 border-4 border-dashed border-gray-300 rounded-3xl flex items-center justify-center relative bg-gray-50 shadow-sm print:w-full print:max-w-md">
+              <span className="text-sm font-black text-gray-500 uppercase leading-tight text-center print:text-xl">GUARITA<br/>DUQUE</span>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[85%] flex flex-col-reverse items-center">
+                <MapPoint mapId="EXT-30" />
+                <span className="text-[9px] font-black text-primary uppercase mb-1 print:text-[11px]">EXTERNO</span>
+              </div>
               <div className="absolute bottom-3 right-3"><MapPoint mapId="EXT-29" /></div>
             </div>
-            <div className="w-56 h-24 border-4 border-dashed border-gray-300 rounded-3xl flex items-center justify-center relative bg-gray-50 shadow-sm">
-              <span className="text-sm font-black text-gray-500 uppercase">ACI-MAPA</span>
+            <div className="w-64 h-28 border-4 border-dashed border-gray-300 rounded-[32px] flex items-center justify-center relative bg-gray-50 shadow-sm print:w-full print:max-w-md">
+              <span className="text-xs font-black text-gray-500 uppercase tracking-widest text-center print:text-xl">ACI-MAPA</span>
+              <div className="absolute top-0 left-1/4 -translate-y-1/2 flex flex-col items-center">
+                <MapPoint mapId="EXT-100" />
+              </div>
               <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2"><MapPoint mapId="EXT-31" /></div>
             </div>
           </div>
@@ -2732,6 +3730,202 @@ function InfoBox({ icon, label, value, highlight }: any) {
       <div className="mb-2">{icon}</div>
       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">{label}</h3>
       <p className={`text-lg font-semibold ${highlight ? 'text-primary' : ''}`}>{value}</p>
+    </div>
+  );
+}
+
+function SqlSetupModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [status, setStatus] = useState<{ext: boolean, resp: boolean, act: boolean} | null>(null);
+  
+  const sqlCode = `-- 1. Habilitar suporte a UUID
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 2. Tabela de Extintores
+CREATE TABLE IF NOT EXISTS public.extinguishers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    map_id TEXT,
+    location TEXT NOT NULL,
+    sub_location TEXT,
+    type TEXT NOT NULL,
+    capacity TEXT,
+    status TEXT NOT NULL DEFAULT 'Seguro',
+    last_recharge_date TEXT,
+    expiry_date TEXT,
+    inspections JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. Tabela de Responsáveis
+CREATE TABLE IF NOT EXISTS public.responsibles (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. Tabela de Atividades
+CREATE TABLE IF NOT EXISTS public.activities (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL,
+    time TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. Habilitar Segurança (RLS)
+ALTER TABLE public.extinguishers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.responsibles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+
+-- 6. Políticas de Acesso Total
+DROP POLICY IF EXISTS "Acesso Total Extintores" ON public.extinguishers;
+CREATE POLICY "Acesso Total Extintores" ON public.extinguishers FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acesso Total Responsaveis" ON public.responsibles;
+CREATE POLICY "Acesso Total Responsaveis" ON public.responsibles FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acesso Total Atividades" ON public.activities;
+CREATE POLICY "Acesso Total Atividades" ON public.activities FOR ALL USING (true) WITH CHECK (true);
+
+-- 7. Forçar recarregamento do cache (IMPORTANTE)
+NOTIFY pgrst, 'reload schema';`;
+
+  const copySql = () => {
+    navigator.clipboard.writeText(sqlCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const checkStatus = async () => {
+    if (!supabase) return;
+    setChecking(true);
+    try {
+      // Executar as 3 consultas em paralelo para ser mais rápido
+      const [r1, r2, r3] = await Promise.all([
+        supabase.from('extinguishers').select('id', { count: 'exact', head: true }).limit(1).maybeSingle(),
+        supabase.from('responsibles').select('id', { count: 'exact', head: true }).limit(1).maybeSingle(),
+        supabase.from('activities').select('id', { count: 'exact', head: true }).limit(1).maybeSingle()
+      ]);
+      
+      setStatus({
+        ext: !r1.error,
+        resp: !r2.error,
+        act: !r3.error
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div className="p-8 bg-slate-900 text-white flex justify-between items-center text-left">
+          <div>
+            <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+              <Database size={28} className="text-blue-400" />
+              Sincronizar Banco
+            </h2>
+            <p className="text-white/60 text-[10px] mt-1 font-bold uppercase tracking-[0.2em]">Configuração do Supabase</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="p-8 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
+          <div className="grid gap-4">
+            <div className="flex gap-4 items-start bg-blue-50 p-6 rounded-3xl border border-blue-100 text-left">
+              <div className="bg-blue-600 text-white w-8 h-8 rounded-2xl flex items-center justify-center text-sm font-black shadow-lg shadow-blue-200 shrink-0">
+                1
+              </div>
+              <div>
+                <h4 className="font-bold text-blue-900 text-sm">Copie o script de criação</h4>
+                <p className="text-blue-700/70 text-xs mt-1 leading-relaxed">Este código criará as tabelas e permissões necessárias no seu projeto.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-start bg-slate-50 p-6 rounded-3xl border border-slate-100 text-left">
+              <div className="bg-slate-900 text-white w-8 h-8 rounded-2xl flex items-center justify-center text-sm font-black shadow-lg shadow-slate-200 shrink-0">
+                2
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm">Execute no SQL Editor</h4>
+                <p className="text-slate-600 text-xs mt-1 leading-relaxed">No Supabase, cole em 'SQL Editor' &gt; 'New Query' e clique em <b>RUN</b>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center px-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Código SQL para Migração</label>
+              <button 
+                onClick={copySql}
+                className={`text-xs font-black px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
+                  copied ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-100' : 'bg-slate-900 text-white shadow-lg shadow-slate-200'
+                }`}
+              >
+                {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                {copied ? 'CONCLUÍDO' : 'COPIAR SCRIPT'}
+              </button>
+            </div>
+            <div className="relative group text-left">
+              <pre className="p-8 bg-slate-900 rounded-[2.5rem] text-xs font-mono text-slate-300 overflow-x-auto border border-slate-800 shadow-2xl group-hover:border-slate-700 transition-colors max-h-60 overflow-y-auto scrollbar-hide">
+                {sqlCode}
+              </pre>
+            </div>
+          </div>
+
+          {status && (
+            <div className="space-y-4 border-t pt-8 text-center">
+              <div className="flex flex-col items-center">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Status da Verificação</h3>
+                {status.ext && status.resp && status.act && (
+                  <div className="mb-6 py-2 px-6 bg-emerald-500 text-white rounded-full text-[10px] font-black shadow-lg animate-bounce">
+                    TUDO PRONTO! AGORA É SÓ RECARREGAR
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: 'Instalado', key: 'ext', name: 'Extintores' },
+                  { label: 'Instalado', key: 'resp', name: 'Contatos' },
+                  { label: 'Instalado', key: 'act', name: 'Logs' }
+                ].map((t) => (
+                  <div key={t.key} className={`p-5 rounded-[2rem] border-2 flex flex-col items-center gap-3 transition-all ${status[t.key as keyof typeof status] ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-xl shadow-emerald-50' : 'bg-rose-50 border-rose-100 text-rose-500 shadow-xl shadow-rose-50'}`}>
+                    <span className="text-[9px] font-black uppercase tracking-tighter opacity-60">{t.name}</span>
+                    {status[t.key as keyof typeof status] ? <CheckCircle2 size={28} /> : <AlertTriangle size={28} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-8 border-t bg-slate-50/50 backdrop-blur-xl flex gap-4">
+          <button 
+            onClick={checkStatus}
+            disabled={checking}
+            className="flex-1 px-8 py-5 rounded-3xl border-2 border-slate-200 bg-white font-black text-slate-700 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all hover:border-slate-300 disabled:opacity-50 active:scale-95 text-sm tracking-tight"
+          >
+            <RefreshCw className={checking ? 'animate-spin' : ''} size={20} />
+            VERIFICAR TABELAS
+          </button>
+          <button 
+            onClick={() => window.location.reload()}
+            className="flex-1 px-8 py-5 rounded-3xl bg-slate-900 font-black text-white flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95 text-sm tracking-tight"
+          >
+            Sincronizar e Recarregar
+            <ArrowRight size={20} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2893,6 +4087,7 @@ function ReportsView({ extinguishers, responsibles }: { extinguishers: Extinguis
       case 'inventory': return 'Relatório de Inventário Completo';
       case 'inspections': return 'Relatório de Inspeções Mensais';
       case 'maintenance_expiry': return 'Relatório de Manutenção e Vencimentos';
+      case 'stats': return 'Resumo de Quantidades por Tipo e Local';
       default: return 'Relatório Técnico';
     }
   };
@@ -2953,10 +4148,74 @@ function ReportsView({ extinguishers, responsibles }: { extinguishers: Extinguis
     const data = getFilteredData(reportType);
     const today = new Date().toLocaleDateString('pt-BR');
 
-    // Load logo for PDF (Removed as requested)
-    // const logoData = await getBase64ImageFromUrl(CEASA_LOGO_URL);
+    if (reportType === 'stats') {
+      doc.setFontSize(18);
+      doc.setTextColor(27, 109, 36);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CEASA PARANÁ - Unidade de Foz do Iguaçu', 14, 20);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('Resumo de Inventário por Tipo e Localização', 14, 30);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(`Gerado em: ${today}`, 14, 36);
 
-    if (isLandscape) {
+      // Summary Table 1: Type Totals
+      const types = Array.from(new Set(data.map(e => e.type))).sort();
+      const typeSummary: any[] = types.map(t => [t, data.filter(e => e.type === t).length.toString()]);
+      typeSummary.push([{ content: 'TOTAL GERAL', styles: { fontStyle: 'bold' } }, { content: data.length.toString(), styles: { fontStyle: 'bold' } }]);
+
+      autoTable(doc, {
+        startY: 45,
+        head: [['Tipo de Carga', 'Quantidade']],
+        body: typeSummary,
+        theme: 'striped',
+        headStyles: { fillColor: [27, 109, 36] },
+        styles: { fontSize: 10 },
+        tableWidth: 100
+      });
+
+      // Summary Table 2: Location vs Type Grid
+      const locations = Array.from(new Set(data.map(e => e.location))).sort();
+      const gridHead = [['Localização', ...types, 'Total']];
+      const gridBody: any[] = locations.map(loc => {
+        const row: any[] = [loc];
+        let locTotal = 0;
+        types.forEach(t => {
+          const count = data.filter(e => e.location === loc && e.type === t).length;
+          row.push(count > 0 ? count.toString() : '-');
+          locTotal += count;
+        });
+        row.push(locTotal.toString());
+        return row;
+      });
+
+      // Footer total row for grid
+      const footerRow: any[] = ['TOTAL CONSOLIDADO'];
+      types.forEach(t => {
+        footerRow.push(data.filter(e => e.type === t).length.toString());
+      });
+      footerRow.push(data.length.toString());
+      gridBody.push(footerRow);
+
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 15,
+        head: gridHead,
+        body: gridBody,
+        theme: 'grid',
+        headStyles: { fillColor: [27, 109, 36], fontSize: 8 },
+        styles: { fontSize: 9 },
+        didParseCell: (dataCell) => {
+          if (dataCell.row.index === gridBody.length - 1) {
+            dataCell.cell.styles.fontStyle = 'bold';
+            dataCell.cell.styles.fillColor = [240, 240, 240];
+          }
+        }
+      });
+
+    } else if (isLandscape) {
       // Chunk data into pages of 9 rows for better legibility as requested
       const itemsPerPage = 9;
       const chunks = [];
@@ -3140,19 +4399,49 @@ function ReportsView({ extinguishers, responsibles }: { extinguishers: Extinguis
     const today = new Date().toLocaleDateString('pt-BR');
 
     let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
-    csvContent += "Codigo;Localizacao;Tipo;Capacidade;Vencimento;Status\n";
+    
+    if (reportType === 'stats') {
+      csvContent += "RELATORIO ESTATISTICO DE EXTINTORES\n";
+      csvContent += `Unidade:;${unit}\n`;
+      csvContent += `Data:;${today}\n\n`;
+      
+      csvContent += "RESUMO POR TIPO\n";
+      csvContent += "Tipo;Quantidade\n";
+      const types = Array.from(new Set(data.map(e => e.type))).sort();
+      types.forEach(t => {
+        csvContent += `${t};${data.filter(e => e.type === t).length}\n`;
+      });
+      csvContent += `TOTAL GERAL;${data.length}\n\n`;
+      
+      csvContent += "DETALHAMENTO POR LOCALIZACAO\n";
+      csvContent += `Localização;${types.join(";")};Total\n`;
+      const locations = Array.from(new Set(data.map(e => e.location))).sort();
+      locations.forEach(loc => {
+        const row: any[] = [loc];
+        let locTotal = 0;
+        types.forEach(t => {
+          const count = data.filter(e => e.location === loc && e.type === t).length;
+          row.push(count);
+          locTotal += count;
+        });
+        row.push(locTotal);
+        csvContent += row.join(";") + "\n";
+      });
+    } else {
+      csvContent += "Codigo;Localizacao;Tipo;Capacidade;Vencimento;Status\n";
 
-    data.forEach(ext => {
-      const row = [
-        ext.code,
-        `"${ext.location} - ${ext.subLocation}"`,
-        ext.type,
-        ext.capacity,
-        reportType === 'inspections' ? (ext.inspections.length > 0 ? ext.inspections[0].date : 'Sem registro') : ext.expiryDate,
-        ext.status
-      ].join(";");
-      csvContent += row + "\n";
-    });
+      data.forEach(ext => {
+        const row = [
+          ext.code,
+          `"${ext.location} - ${ext.subLocation}"`,
+          ext.type,
+          ext.capacity,
+          reportType === 'inspections' ? (ext.inspections.length > 0 ? ext.inspections[0].date : 'Sem registro') : ext.expiryDate,
+          ext.status
+        ].join(";");
+        csvContent += row + "\n";
+      });
+    }
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -3330,6 +4619,14 @@ function ReportsView({ extinguishers, responsibles }: { extinguishers: Extinguis
           onXLS={() => exportToXLS('maintenance_expiry')}
           onView={() => setActiveReport('maintenance_expiry')}
         />
+        <ReportCard 
+          title="Quantidades e Tipos" 
+          description="Resumo estatístico de extintores por tipo de carga e localização."
+          icon={<Database className="text-blue-500" />}
+          onPDF={() => exportToPDF('stats')}
+          onXLS={() => exportToXLS('stats')}
+          onView={() => setActiveReport('stats')}
+        />
       </div>
     </div>
   );
@@ -3343,6 +4640,7 @@ function ReportContent({ type, extinguishers, unit, month, responsible }: { type
       case 'inventory': return 'Relatório de Inventário Completo';
       case 'inspections': return 'Relatório de Inspeções Mensais';
       case 'maintenance_expiry': return 'Relatório de Manutenção e Vencimentos';
+      case 'stats': return 'Resumo de Quantidades por Tipo e Local';
       default: return 'Relatório Técnico';
     }
   };
@@ -3425,7 +4723,103 @@ function ReportContent({ type, extinguishers, unit, month, responsible }: { type
       </div>
 
       {/* Tabela de Dados */}
-      <div className="overflow-x-auto">
+      {type === 'stats' ? (
+        <div className="space-y-10">
+          <div className="grid grid-cols-2 gap-8 no-print">
+            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+              <h3 className="text-secondary font-black uppercase text-sm mb-4">Total por Tipo de Carga</h3>
+              <div className="space-y-3">
+                {Array.from(new Set(extinguishers.map(e => e.type))).map(tipo => {
+                  const count = extinguishers.filter(e => e.type === tipo).length;
+                  return (
+                    <div key={tipo} className="flex justify-between items-center border-b border-gray-200 pb-1">
+                      <span className="text-[10px] font-bold uppercase">{tipo}</span>
+                      <span className="text-[12px] font-black text-secondary">{count}</span>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-[10px] font-black uppercase">TOTAL GERAL</span>
+                  <span className="text-[14px] font-black text-primary">{extinguishers.length}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+              <h3 className="text-secondary font-black uppercase text-sm mb-4">Total por Localização</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {Array.from(new Set(extinguishers.map(e => e.location))).sort().map(loc => {
+                  const count = extinguishers.filter(e => e.location === loc).length;
+                  return (
+                    <div key={loc} className="flex justify-between items-center border-b border-gray-200 pb-1">
+                      <span className="text-[10px] font-bold uppercase">{loc}</span>
+                      <span className="text-[10px] font-black text-gray-700">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h3 className="text-secondary font-black uppercase text-center text-lg border-b-2 border-secondary pb-1 print:block hidden">Resumo Estatístico de Extintores</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-secondary text-white">
+                    <th className="border border-secondary p-2 text-left text-[11px] font-black uppercase">Ponto de Localização</th>
+                    {Array.from(new Set(extinguishers.map(e => e.type))).sort().map(t => (
+                      <th key={t} className="border border-secondary p-2 text-center text-[9px] font-black uppercase">{t}</th>
+                    ))}
+                    <th className="border border-secondary p-2 text-center text-[11px] font-black uppercase">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from(new Set(extinguishers.map(e => e.location))).sort().map(loc => {
+                    const locExts = extinguishers.filter(e => e.location === loc);
+                    return (
+                      <tr key={loc} className="hover:bg-gray-50 transition-colors">
+                        <td className="border border-gray-200 p-2 text-[11px] font-black uppercase">{loc}</td>
+                        {Array.from(new Set(extinguishers.map(e => e.type))).sort().map(t => {
+                          const count = locExts.filter(e => e.type === t).length;
+                          return (
+                            <td key={t} className={`border border-gray-200 p-2 text-center text-[11px] font-bold ${count > 0 ? 'text-gray-900 bg-gray-50/50' : 'text-gray-200'}`}>
+                              {count > 0 ? count : '-'}
+                            </td>
+                          );
+                        })}
+                        <td className="border border-gray-200 p-2 text-center text-[11px] font-black bg-gray-100/50">{locExts.length}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100">
+                    <td className="border border-gray-300 p-2 text-[11px] font-black uppercase">TOTAIS CONSOLIDADOS</td>
+                    {Array.from(new Set(extinguishers.map(e => e.type))).sort().map(t => (
+                      <td key={t} className="border border-gray-300 p-2 text-center text-[11px] font-black">
+                        {extinguishers.filter(e => e.type === t).length}
+                      </td>
+                    ))}
+                    <td className="border border-secondary bg-secondary text-white p-2 text-center text-[14px] font-black">
+                      {extinguishers.length}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 no-print">
+              <p className="text-[10px] text-blue-800 font-medium leading-relaxed">
+                <Info size={14} className="inline mr-1 mb-0.5" />
+                Este relatório compila a quantidade total de equipamentos por tipo de carga em cada setor da unidade. 
+                Utilize este informativo para planejamento de recargas e gestão de inventário.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-100">
@@ -3523,6 +4917,7 @@ function ReportContent({ type, extinguishers, unit, month, responsible }: { type
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Footer do Relatório */}
       <div className="mt-12 pt-8 border-t border-gray-100 grid grid-cols-2 gap-12">
@@ -3580,30 +4975,24 @@ function ReportCard({ title, description, icon, onPDF, onXLS, onView }: any) {
   );
 }
 
-function ResponsibleView({ responsibles }: { responsibles: Responsible[] }) {
+function ResponsibleView({ responsibles, onAdd, onDelete }: { 
+  responsibles: Responsible[], 
+  onAdd: (resp: any) => void, 
+  onDelete: (id: string) => void 
+}) {
   const [isAdding, setIsAdding] = useState(false);
   const [newResp, setNewResp] = useState<Partial<Responsible>>({ name: '', role: '', email: '', phone: '' });
 
   const handleAdd = async () => {
     if (newResp.name && newResp.role) {
-      try {
-        const { error } = await supabase.from('responsibles').insert([newResp]);
-        if (error) throw error;
-        setNewResp({ name: '', role: '', email: '', phone: '' });
-        setIsAdding(false);
-      } catch (error) {
-        console.error("Error adding responsible:", error);
-      }
+      onAdd(newResp);
+      setNewResp({ name: '', role: '', email: '', phone: '' });
+      setIsAdding(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from('responsibles').delete().eq('id', id);
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting responsible:", error);
-    }
+    onDelete(id);
   };
 
   return (
@@ -3623,35 +5012,51 @@ function ResponsibleView({ responsibles }: { responsibles: Responsible[] }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {responsibles.map((resp) => (
-          <div key={resp.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-secondary-light flex items-center justify-center text-secondary shrink-0">
-              <UserCog size={32} />
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <h3 className="text-lg font-bold">{resp.name}</h3>
-                <button 
-                  onClick={() => handleDelete(resp.id)}
-                  className="text-gray-300 hover:text-primary transition-colors"
-                >
-                  <Trash2 size={18} />
-                </button>
+        {responsibles.length > 0 ? (
+          responsibles.map((resp) => (
+            <div key={resp.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-all">
+              <div className="w-16 h-16 rounded-2xl bg-secondary-light flex items-center justify-center text-secondary shrink-0">
+                <UserCog size={32} />
               </div>
-              <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">{resp.role}</p>
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                  <span className="font-bold text-[10px] uppercase text-gray-400 w-12">Email:</span>
-                  {resp.email}
-                </p>
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                  <span className="font-bold text-[10px] uppercase text-gray-400 w-12">Fone:</span>
-                  {resp.phone}
-                </p>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-lg font-bold">{resp.name}</h3>
+                  <button 
+                    onClick={() => handleDelete(resp.id)}
+                    className="text-gray-300 hover:text-primary transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-3">{resp.role}</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <span className="font-bold text-[10px] uppercase text-gray-400 w-12">Email:</span>
+                    {resp.email || 'Não informado'}
+                  </p>
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <span className="font-bold text-[10px] uppercase text-gray-400 w-12">Fone:</span>
+                    {resp.phone || 'Não informado'}
+                  </p>
+                </div>
               </div>
             </div>
+          ))
+        ) : (
+          <div className="col-span-full bg-white p-12 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+              <UserCog size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum responsável cadastrado</h3>
+            <p className="text-gray-500 max-w-xs mb-8 font-medium">A lista está vazia. Adicione os responsáveis técnicos para vinculá-los às inspeções.</p>
+            <button 
+              onClick={() => setIsAdding(true)}
+              className="bg-secondary text-white px-8 py-3 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+            >
+              Começar Agora
+            </button>
           </div>
-        ))}
+        )}
       </div>
 
       <AnimatePresence>
@@ -3820,7 +5225,7 @@ function LoginScreen({
   );
 }
 
-function SettingsView({ onMagicLink, onBack }: { onMagicLink: () => void, onBack?: () => void }) {
+function SettingsView({ dbStatus, onMagicLink, onImportMockData, onBack }: { dbStatus: string, onMagicLink: () => void, onImportMockData: () => void, onBack?: () => void }) {
   const [magicCopied, setMagicCopied] = useState(false);
 
   const handleCopy = () => {
@@ -3835,6 +5240,12 @@ function SettingsView({ onMagicLink, onBack }: { onMagicLink: () => void, onBack
       localStorage.removeItem('magic_supabase_anon');
       localStorage.removeItem('magic_gemini_key');
       window.location.reload();
+    }
+  };
+
+  const handleFullSync = () => {
+    if (confirm("⚠️ AVISO: Isso irá deletar os dados atuais do banco e reinstalar a estrutura correta. Deseja continuar?")) {
+      onImportMockData();
     }
   };
 
@@ -3859,6 +5270,31 @@ function SettingsView({ onMagicLink, onBack }: { onMagicLink: () => void, onBack
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mb-4">
+            <RefreshCw size={32} />
+          </div>
+          <div>
+            <h3 className="text-xl font-black uppercase tracking-tight mb-2">Restaurar Banco de Dados</h3>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Use esta opção apenas se precisar restaurar todos os 54 extintores originais. 
+              <b> Atenção:</b> Isso apagará todas as edições manuais feitas até agora.
+            </p>
+          </div>
+          
+          <button 
+            onClick={handleFullSync}
+            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg"
+          >
+            <Database size={20} />
+            Restaurar Dados Originais (Mock)
+          </button>
+          
+          <p className="text-[10px] text-red-500 font-bold text-center uppercase tracking-wider">
+            Atenção: Este comando é irreversível.
+          </p>
+        </div>
+
         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <div className="w-16 h-16 bg-secondary-light rounded-2xl flex items-center justify-center text-secondary mb-4">
             <Link size={32} />
@@ -3918,7 +5354,15 @@ function SettingsView({ onMagicLink, onBack }: { onMagicLink: () => void, onBack
           <div className="pt-4 border-t border-gray-50 space-y-3">
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
               <span>Database Status</span>
-              <span className="text-secondary">Conectado (Supabase)</span>
+              <span className={
+                dbStatus === 'connected' ? 'text-emerald-500' : 
+                dbStatus === 'error' ? 'text-red-500' : 
+                dbStatus === 'checking' ? 'text-amber-500' : 'text-gray-300'
+              }>
+                {dbStatus === 'connected' ? 'Conectado (Supabase)' : 
+                 dbStatus === 'error' ? 'Erro de Conexão' : 
+                 dbStatus === 'checking' ? 'Verificando...' : 'Desconectado'}
+              </span>
             </div>
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
               <span>AI Engine</span>

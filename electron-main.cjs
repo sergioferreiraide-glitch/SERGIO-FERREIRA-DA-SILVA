@@ -23,12 +23,11 @@ function createWindow() {
   if (isDev) {
     win.loadURL('http://localhost:3000');
   } else {
-    // Em produção, o arquivo está em dist/index.html relativo ao executável
-    const indexPath = path.join(__dirname, 'dist', 'index.html');
-    win.loadFile(indexPath);
+    // Em produção, usa o caminho relativo correto
+    win.loadFile(path.join(__dirname, 'dist/index.html'));
   }
 
-  // Remove o menu superior padrão para parecer um app nativo
+  // Remove o menu superior
   win.setMenuBarVisibility(false);
 }
 
