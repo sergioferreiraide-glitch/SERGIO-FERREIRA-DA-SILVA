@@ -206,6 +206,8 @@ export default function App() {
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isInitialSync, setIsInitialSync] = useState(true);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [extinguishers, setExtinguishers] = useState<Extinguisher[]>(() => {
     try {
       const saved = localStorage.getItem('fire_extinguishers_cache');
@@ -282,9 +284,19 @@ export default function App() {
     }
     
     setIsUpdating(true);
+    setSupabaseError(null);
     try {
-      const { data, error } = await supabase.from('extinguishers').select('*').order('code');
-      if (error) throw error;
+      const { data, error } = await Promise.race([
+        supabase.from('extinguishers').select('*').order('code'),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Tempo de resposta excedido (Supabase Timeout)")), 15000))
+      ]);
+        
+      if (error) {
+        if (error.message.includes('column') || error.message.includes('table')) {
+          console.error("Schema cache issue detected:", error);
+        }
+        throw error;
+      }
       
       const mapped = data.map((e: any) => ({
         id: e.id,
@@ -304,6 +316,7 @@ export default function App() {
       localStorage.setItem('fire_extinguishers_cache', JSON.stringify(mapped));
       setNotification({ message: `📦 Nuvem -> Local: ${mapped.length} extintores carregados.`, type: 'success' });
     } catch (err: any) {
+      setSupabaseError(err.message);
       setNotification({ message: "Erro ao baixar: " + err.message, type: 'error' });
     } finally {
       setIsUpdating(false);
@@ -311,7 +324,7 @@ export default function App() {
     }
   };
 
-  // Forçar Envio Local para Nuvem (Útil se uma tela tiver mais dados que a outra)
+  // Forçar Envio Local para Nuvem
   const handleUploadLocalToCloud = async () => {
     if (!supabase) {
       setNotification({ message: "Supabase não configurado!", type: 'error' });
@@ -319,11 +332,10 @@ export default function App() {
     }
 
     setIsUpdating(true);
+    setSupabaseError(null);
     try {
-      // Validar IDs e converter IDs antigos para UUID se necessário
       const dataToSync = extinguishers.map(ext => {
         let id = ext.id;
-        // Se o ID não parece um UUID, geramos um novo (isso evita erro no Supabase)
         if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
           id = crypto.randomUUID();
         }
@@ -342,10 +354,13 @@ export default function App() {
         };
       });
 
-      const { error } = await supabase.from('extinguishers').upsert(dataToSync, { onConflict: 'id' });
+      const { error } = await Promise.race([
+        supabase.from('extinguishers').upsert(dataToSync, { onConflict: 'id' }),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Tempo de resposta excedido ao subir dados")), 15000))
+      ]);
+      
       if (error) throw error;
 
-      // Se mudamos IDs, atualizamos o estado local também
       const updatedLocal = dataToSync.map(d => ({
         id: d.id,
         code: d.code,
@@ -363,12 +378,9 @@ export default function App() {
       localStorage.setItem('fire_extinguishers_cache', JSON.stringify(updatedLocal));
 
       setNotification({ message: `🚀 Sucesso! ${dataToSync.length} extintores enviados para a Nuvem.`, type: 'success' });
-      // Forçar um pequeno alerta para garantir que o usuário viu
-      window.alert("Sincronização concluída com sucesso!");
     } catch (err: any) {
-      console.error("Erro no upload:", err);
+      setSupabaseError(err.message);
       setNotification({ message: "Erro ao enviar: " + (err.message || "Erro desconhecido"), type: 'error' });
-      window.alert("Erro ao enviar dados: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsUpdating(false);
       setTimeout(() => setNotification(null), 3000);
@@ -387,9 +399,9 @@ export default function App() {
     if (!supabase) return;
 
     const fetchData = async () => {
-      setIsUpdating(true);
+      // No primeiro carregamento ou quando o Supabase estiver disponível
+      // Não bloqueamos isUpdating aqui para não travar os botões manuais
       try {
-        // Buscar Extintores
         const { data: extData, error: extError } = await supabase
           .from('extinguishers')
           .select('*')
@@ -447,10 +459,11 @@ export default function App() {
             time: new Date(a.time).toLocaleString('pt-BR')
           })));
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao sincronizar:', err);
+        setSupabaseError(err.message);
       } finally {
-        setIsUpdating(false);
+        setIsInitialSync(false);
       }
     };
 
@@ -1660,6 +1673,18 @@ export default function App() {
                 <div className="my-4 border-t border-gray-100 pt-4 px-2">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sincronização Cloud</span>
                 </div>
+                {supabaseError && (
+                  <div className="mx-2 mb-4 p-3 bg-red-50 border border-red-100 rounded-xl">
+                    <p className="text-[10px] text-red-600 font-bold uppercase mb-1">Erro de Conexão</p>
+                    <p className="text-[9px] text-red-500 leading-tight mb-2">{supabaseError}</p>
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="text-[9px] font-black text-white bg-red-500 px-2 py-1 rounded uppercase tracking-tighter"
+                    >
+                      Reiniciar Conexão
+                    </button>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2 px-2">
                   <button 
                     onClick={() => { handleSyncFromCloud(); setIsSidebarOpen(false); }}
