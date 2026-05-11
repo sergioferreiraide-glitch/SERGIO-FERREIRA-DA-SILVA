@@ -132,7 +132,7 @@ const MOCK_EXTINGUISHERS: Extinguisher[] = [
 
   // DEPÓSITO (Reservas R1-R4)
   ...Array.from({ length: 4 }, (_, i) => ({
-    id: `reserve-ext-${i + 1}`,
+    id: `11111111-1111-1111-1111-22222222220${i + 1}`,
     code: `EXT-R${i + 1}`,
     mapId: `EXT-R${i + 1}`,
     location: 'DEPÓSITO',
@@ -162,10 +162,10 @@ const MOCK_EXTINGUISHERS: Extinguisher[] = [
 ];
 
 const MOCK_ACTIVITIES: Activity[] = [
-  { id: 'act1', title: 'Inspeção realizada no Pavilhão Direito, Box Niehues', type: 'Concluído', time: 'há 12 minutos' },
-  { id: 'act2', title: 'Substituição de Lacre: Pavilhão Central, Coluna 12', type: 'Manutenção', time: 'há 2 horas' },
-  { id: 'act3', title: 'Vencimento Reportado: Pavilhão Norte, Box 45', type: 'Alerta', time: 'há 5 horas' },
-  { id: 'act4', title: 'Novo Extintor Cadastrado: Pavilhão Sul, Adm', type: 'Novo Item', time: 'Ontem, 16:45' },
+  { id: '11111111-3333-4444-5555-666666666601', title: 'Inspeção realizada no Pavilhão Direito, Box Niehues', type: 'Concluído', time: 'há 12 minutos' },
+  { id: '11111111-3333-4444-5555-666666666602', title: 'Substituição de Lacre: Pavilhão Central, Coluna 12', type: 'Manutenção', time: 'há 2 horas' },
+  { id: '11111111-3333-4444-5555-666666666603', title: 'Vencimento Reportado: Pavilhão Norte, Box 45', type: 'Alerta', time: 'há 5 horas' },
+  { id: '11111111-3333-4444-5555-666666666604', title: 'Novo Extintor Cadastrado: Pavilhão Sul, Adm', type: 'Novo Item', time: 'Ontem, 16:45' },
 ];
 
 const MOCK_RESPONSIBLES: Responsible[] = [
@@ -237,7 +237,7 @@ export default function App() {
       
       if (missingReserves.length > 0) {
         const newReserves = missingReserves.map(code => ({
-          id: `res-${code}-${Math.random().toString(36).substr(2, 9)}`,
+          id: crypto.randomUUID(),
           code: code,
           mapId: code,
           location: 'DEPÓSITO',
@@ -318,31 +318,57 @@ export default function App() {
       return;
     }
 
-    const confirm = window.confirm(`Isso enviará seus ${extinguishers.length} extintores locais para o banco de dados. Deseja continuar?`);
-    if (!confirm) return;
-
     setIsUpdating(true);
     try {
-      const dbData = extinguishers.map(ext => ({
-        id: ext.id,
-        code: ext.code,
-        map_id: ext.mapId,
-        location: ext.location,
-        sub_location: ext.subLocation,
-        type: ext.type,
-        capacity: ext.capacity,
-        status: ext.status,
-        last_recharge_date: ext.lastRechargeDate,
-        expiry_date: ext.expiryDate,
-        inspections: ext.inspections || []
-      }));
+      // Validar IDs e converter IDs antigos para UUID se necessário
+      const dataToSync = extinguishers.map(ext => {
+        let id = ext.id;
+        // Se o ID não parece um UUID, geramos um novo (isso evita erro no Supabase)
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+          id = crypto.randomUUID();
+        }
+        return {
+          id,
+          code: ext.code,
+          map_id: ext.mapId,
+          location: ext.location,
+          sub_location: ext.subLocation,
+          type: ext.type,
+          capacity: ext.capacity,
+          status: ext.status,
+          last_recharge_date: ext.lastRechargeDate,
+          expiry_date: ext.expiryDate,
+          inspections: ext.inspections || []
+        };
+      });
 
-      const { error } = await supabase.from('extinguishers').upsert(dbData, { onConflict: 'id' });
+      const { error } = await supabase.from('extinguishers').upsert(dataToSync, { onConflict: 'id' });
       if (error) throw error;
 
-      setNotification({ message: `🚀 Local -> Nuvem: ${extinguishers.length} itens sincronizados!`, type: 'success' });
+      // Se mudamos IDs, atualizamos o estado local também
+      const updatedLocal = dataToSync.map(d => ({
+        id: d.id,
+        code: d.code,
+        mapId: d.map_id,
+        location: d.location,
+        subLocation: d.sub_location,
+        type: d.type,
+        capacity: d.capacity,
+        status: d.status,
+        lastRechargeDate: d.last_recharge_date,
+        expiryDate: d.expiry_date,
+        inspections: d.inspections
+      }));
+      setExtinguishers(updatedLocal);
+      localStorage.setItem('fire_extinguishers_cache', JSON.stringify(updatedLocal));
+
+      setNotification({ message: `🚀 Sucesso! ${dataToSync.length} extintores enviados para a Nuvem.`, type: 'success' });
+      // Forçar um pequeno alerta para garantir que o usuário viu
+      window.alert("Sincronização concluída com sucesso!");
     } catch (err: any) {
-      setNotification({ message: "Erro ao enviar: " + err.message, type: 'error' });
+      console.error("Erro no upload:", err);
+      setNotification({ message: "Erro ao enviar: " + (err.message || "Erro desconhecido"), type: 'error' });
+      window.alert("Erro ao enviar dados: " + (err.message || "Erro desconhecido"));
     } finally {
       setIsUpdating(false);
       setTimeout(() => setNotification(null), 3000);
@@ -370,6 +396,13 @@ export default function App() {
           .order('code', { ascending: true });
 
         if (!extError && extData) {
+          // Se a nuvem estiver vazia mas tivermos dados locais, NÃO sobrescrevemos automaticamente
+          // Isso evita que o usuário perca tudo ao conectar uma nova conta Supabase
+          if (extData.length === 0 && extinguishers.length > 0) {
+            console.warn("Nuvem vazia detectada. Mantendo dados locais para permitir upload.");
+            return;
+          }
+
           const mappedExt = extData.map((e: any) => ({
             id: e.id,
             code: e.code,
